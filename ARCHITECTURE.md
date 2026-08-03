@@ -1,23 +1,50 @@
 # Architecture — LumaForge AI Studio
 
-## Current implementation
+## Runtime architecture
+
 - Next.js 16 App Router and React 19.
-- Zustand domains for document recipe, history, viewport and comparison state.
-- Canvas 2D renderer with bounded preview and larger export rendering.
-- LocalStorage persistence for recipes and history; image bytes remain memory-only.
-- Zod-validated route handler for AI edit plans.
-- Local rule-based demo provider separated from UI and explicitly identified.
-- TanStack Query shared provider.
-- Responsive application shell with truthful module-status pages.
-- Initial Supabase profiles/projects/assets/edit_versions schema with RLS.
+- Strict TypeScript.
+- Zustand editor domain: image reference, adjustment recipe, geometry, viewport, history and active preset.
+- Canvas 2D shared renderer used by preview, histogram sampling, batch and export.
+- Local rule-based AI provider behind a validated route; provider is marked DEMO.
+- IndexedDB v3 stores projects, image blobs, snapshots, export history and personal presets.
+- LocalStorage stores bounded editor history/draft recipe.
+- Optional Supabase browser client remains inactive without environment variables.
 
-## Processing model
-Browser-supported images are decoded into a Canvas preview. Pixel operations are calculated against RGBA data. Export uses the same recipe at a larger bounded resolution. Originals are never overwritten.
+## Processing order
 
-## Required next architecture
-- IndexedDB project cache and crash recovery.
-- Supabase Auth, Storage and applied RLS.
-- Web Worker/OffscreenCanvas and tiled rendering.
-- True sharpening and denoise kernels.
-- Curves, crop, geometry, masks, layers and version branches.
-- Typed AI provider interface, durable jobs, timeout/fallback, audit logs and credit ledger.
+1. Decode supported browser image.
+2. Apply non-destructive crop/rotation/flip transform.
+3. Apply exposure and tonal controls.
+4. Apply composite tone-curve LUT.
+5. Apply global color and HSL mixer.
+6. Apply clarity, grain, denoise and sharpening.
+7. Apply vignette.
+8. Draw preview or encode export.
+
+This ordering is shared to reduce preview/export divergence.
+
+## Persistence domains
+
+- `projects`: image Blob, dimensions, recipe, geometry and lifecycle metadata.
+- `versions`: named recipe/geometry snapshots linked to a project.
+- `exports`: successful format/settings/output records.
+- `presets`: user recipe definitions and scope.
+
+Deleting a project also removes its versions and export history. Personal presets remain independent.
+
+## API/security boundary
+
+- `POST /api/ai/plan` validates prompt length through Zod.
+- Upload type/size/decode are validated client-side; server upload does not yet exist.
+- Security headers are configured.
+- Supabase SQL includes owner fields/indexes/RLS but remains unapplied.
+
+## Required evolution
+
+- Move pixel work to Web Worker/OffscreenCanvas and add tiled smart previews.
+- Add free crop/perspective data model.
+- Add masks, layers and local-adjustment compositing.
+- Add real AI provider interface, job state machine, audit log, rate limiting and fallback.
+- Add Supabase Auth/Storage/Realtime with tested RLS.
+- Add durable offline sync and conflict resolution.

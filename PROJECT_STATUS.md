@@ -1,53 +1,60 @@
 # Project Status
 
-Last updated: 2026-08-03 18:07 (Asia/Bangkok)
-Current phase: Phase 1–7 Functional MVP
-Current milestone: Validated and deployed browser editor foundation
-Overall completion: 31% weighted, evidence-qualified
-Current branch: main
-Build status: PASS
+Last updated: 2026-08-03 19:50 (Asia/Bangkok)
+Current phase: Phase 30 release validation completed; Phase 3 cloud foundation next
+Current milestone: Merge validated local-first editor MVP, then add Supabase-backed protected sync
+Overall completion: 47% weighted, evidence-qualified
+Current branch: agent/release-validation
+Build status: PASS — GitHub Actions validate job and Vercel preview deployment
 Lint status: PASS — 0 warnings
 Type-check status: PASS
-Test status: PASS — 3/3 core unit tests; E2E NOT RUN
-Deployment status: READY on Vercel
+Test status: PASS — 7/7 core unit tests and 3/3 Chromium E2E flows
+Deployment status: READY on Vercel preview; production visual inspection remains access-protected
 
 ## Current Task
-Task: Build and validate a functional non-destructive browser editor foundation
+Task: Finalize PR #1 after successful CI and browser validation
 Status: TESTED
 Started: 2026-08-03
 Completed: 2026-08-03
-Files changed: Application source, configuration, tests, CI, migration and documentation
-Dependencies added: Next.js 16, React 19, Zustand, TanStack Query, Zod, Lucide
-Database changes: Initial Supabase schema/RLS created but NOT APPLIED
-API changes: POST /api/ai/plan with Zod validation and transparent local demo provider
+Files changed: Application, editor engine, persistence, routes, tests, CI, migration and documentation
+Dependencies added: Next.js 16, React 19, Zustand, TanStack Query, Zod, Lucide, Supabase clients, Playwright
+Database changes: IndexedDB v3 active; Supabase migration exists but is NOT APPLIED
+API changes: `POST /api/ai/plan` with Zod validation and explicit local demo provider
+Known limitations: Cloud AI, RAW, masks/layers, beauty, generative editing, collaboration, community, marketplace payments and applied cloud security remain incomplete
 
 ## Completed Modules
-- Foundation — 85% — TESTED — lint/typecheck/tests/build pass
-- Responsive shell — 75% — FUNCTIONAL
-- Image import MVP — 70% — FUNCTIONAL
-- Core Canvas — 70% — FUNCTIONAL
-- Manual adjustments — 65% — FUNCTIONAL; sharpness/denoise remain partial
-- History/local persistence — 65% — FUNCTIONAL
-- Presets — 70% — TESTED core
-- Transparent AI plan — 45% — TESTED DEMO
-- Export MVP — 60% — FUNCTIONAL, browser E2E pending
-- Production deployment — 70% — READY on Vercel
+- Foundation — 85% — TESTED — Lint, TypeScript, unit tests, production build and Chromium E2E pass
+- Responsive design system shell — 65% — FUNCTIONAL
+- Guest/auth foundation — 35% — PARTIAL — Local guest works; Supabase unconfigured
+- Local project management — 65% — TESTED — Save/open/rename/duplicate/archive/delete
+- Image import — 65% — TESTED — Picker/drop/clipboard/camera for JPG/PNG/WebP
+- Core canvas — 65% — TESTED — Rendering/zoom/pan/fit/original compare
+- Manual adjustments — 65% — TESTED — Light/color/detail/sharpness/denoise/effects alter pixels
+- Color tools — 60% — FUNCTIONAL — Histogram/composite curve/8-color HSL
+- Crop/geometry — 55% — FUNCTIONAL — Reversible centered ratios/rotate/flip
+- History/versions — 65% — TESTED — Undo/redo/local persistence/snapshots
+- Presets — 65% — TESTED — Built-ins/personal CRUD/JSON import-export
+- AI prompt planning — 25% — MOCK/FUNCTIONAL DEMO — No pixel-analysis claim
+- Batch — 55% — FUNCTIONAL — Real queue/render/status/stop-after-current
+- Gallery/assets — 60% — TESTED — IndexedDB search/lifecycle
+- Export Center — 65% — TESTED — JPEG/PNG/WebP/quality/resize/crop/Instagram/history
+- PWA shell — 50% — PARTIAL
 
-## Functional Validation
-- Dependency install: PASS
-- Lint: PASS, zero warnings
-- Type-check: PASS
-- Unit tests: PASS, 3/3
-- Production build: PASS
-- Route generation: PASS
-- Vercel deployment: PASS / READY
-- Playwright E2E: NOT RUN
-- Supabase permission tests: NOT RUN
+## Browser E2E Evidence
+- Landing page opens the editor.
+- PNG upload renders to Canvas.
+- Exposure adjustment changes and Undo restores the prior value.
+- Project save persists to IndexedDB.
+- Snapshot creation succeeds.
+- Project dashboard displays the saved project.
+- Instagram export downloads a JPEG and records success.
+- Personal preset creation appears in the Preset Library.
 
 ## Current Blockers
 - Supabase target and credentials are not configured.
+- Supabase migration and owner RLS have not been applied or permission-tested.
 - Real AI/generative provider is not configured.
-- Browser E2E and real image export fixtures have not been run.
+- Protected deployment prevents unauthenticated production visual-inspection claims.
 
 ## Next Recommended Task
-Connect Supabase Auth and durable project/asset persistence, then add browser E2E fixtures for import, edit, undo and export.
+Merge PR #1, then configure Supabase Auth/Storage, apply owner RLS, add permission tests and implement optional cloud sync without replacing the working local-first editor.
