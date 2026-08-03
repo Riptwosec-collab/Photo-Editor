@@ -6,17 +6,18 @@ Date: 2026-08-03
 
 | Check | Result | Evidence |
 |---|---|---|
-| Dependency installation | PASS | Vercel restored dependencies |
+| Dependency installation | PASS | GitHub Actions and Vercel installed dependencies successfully |
 | ESLint | PASS | 0 errors, 0 warnings |
 | Full TypeScript | PASS | `tsc --noEmit` |
 | Core unit tests | PASS | 7 tests, 7 pass, 0 fail |
 | Next.js production build | PASS | All current application routes generated |
-| Vercel deployment | PASS | Application deployment completed |
-| Browser E2E | TESTING | PR workflow added; result pending |
+| Vercel preview deployment | PASS | Preview deployment reported Ready |
+| Chromium Browser E2E | PASS | 3 tests, 3 pass, 0 fail |
 | Supabase migration | NOT RUN | No target project configured |
 | RLS permission tests | NOT RUN | Migration unapplied |
 | Accessibility audit | NOT RUN | Manual/automated audit pending |
 | Performance profiling | NOT RUN | Worker/tile work pending |
+| Dependency vulnerability remediation | PARTIAL | `npm install` reports 3 high-severity advisories; remediation requires dependency-level review |
 
 ## Unit coverage evidence
 
@@ -28,15 +29,22 @@ Date: 2026-08-03
 - Neutral tone-curve identity LUT.
 - Neutral HSL mixer color preservation.
 
-## E2E release flow defined
+## Passing Chromium E2E flows
 
-1. Open landing and editor.
-2. Upload a real PNG payload.
-3. Change Exposure and undo.
-4. Save project to IndexedDB.
-5. Create snapshot.
-6. Open Project dashboard.
-7. Export through Instagram preset and verify download name.
-8. Save a personal preset and verify it appears in Preset Library.
+1. Landing page opens the functional editor.
+2. A real PNG payload uploads and renders to Canvas.
+3. Exposure changes and Undo restores the prior value.
+4. Project save persists the image and edit recipe to IndexedDB.
+5. Snapshot creation succeeds.
+6. Project dashboard displays the saved project.
+7. Export Center downloads the Instagram JPEG preset and reports success.
+8. Personal preset creation appears in the Preset Library.
 
-A feature remains below COMPLETE until its required browser/database/security tests pass.
+## Defects found and fixed during E2E
+
+- Added `HTMLImageElement.decode()` fallback when `createImageBitmap()` fails.
+- Changed the persistent status toast to ignore pointer events so it cannot block editor controls.
+- Tightened accessible E2E locators for sliders and export status.
+- Retained traces, screenshots and video on future failures.
+
+A feature remains below COMPLETE until its required browser, database, security, accessibility and performance tests pass.
