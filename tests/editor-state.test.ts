@@ -2,23 +2,16 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY, PRESETS } from "../src/features/editor/defaults";
 import { createLocalEditPlan } from "../src/features/ai/local-provider";
-import { applyDetailFilters, createToneCurveLut, getCropRect } from "../src/features/editor/image-processing";
+import { applyColorMixer, applyDetailFilters, createToneCurveLut, getCropRect } from "../src/features/editor/image-processing";
 
 test("default adjustment recipe is neutral", () => {
   for (const value of Object.values(DEFAULT_ADJUSTMENTS)) assert.equal(value, 0);
-  assert.deepEqual(DEFAULT_GEOMETRY, {
-    rotation: 0,
-    flipX: false,
-    flipY: false,
-    aspectRatio: "original",
-  });
+  assert.deepEqual(DEFAULT_GEOMETRY, { rotation: 0, flipX: false, flipY: false, aspectRatio: "original" });
 });
 
 test("every preset uses known adjustment keys", () => {
   const allowed = new Set(Object.keys(DEFAULT_ADJUSTMENTS));
-  for (const preset of PRESETS) {
-    for (const key of Object.keys(preset.adjustments)) assert.ok(allowed.has(key));
-  }
+  for (const preset of PRESETS) for (const key of Object.keys(preset.adjustments)) assert.ok(allowed.has(key));
 });
 
 test("local AI plan is explicitly labeled demo", () => {
@@ -33,7 +26,6 @@ test("center crop preserves requested aspect ratio", () => {
   assert.equal(Math.round(square.sw), 900);
   assert.equal(Math.round(square.sh), 900);
   assert.equal(Math.round(square.sx), 350);
-
   const portrait = getCropRect(1200, 1800, "4:5");
   assert.equal(Math.round((portrait.sw / portrait.sh) * 100), 80);
 });
@@ -43,14 +35,10 @@ test("detail filters alter noisy center pixels without changing alpha", () => {
   const height = 3;
   const pixels = new Uint8ClampedArray(width * height * 4).fill(255);
   for (let index = 0; index < pixels.length; index += 4) {
-    pixels[index] = 100;
-    pixels[index + 1] = 100;
-    pixels[index + 2] = 100;
+    pixels[index] = 100; pixels[index + 1] = 100; pixels[index + 2] = 100;
   }
   const center = (1 * width + 1) * 4;
-  pixels[center] = 240;
-  pixels[center + 1] = 240;
-  pixels[center + 2] = 240;
+  pixels[center] = 240; pixels[center + 1] = 240; pixels[center + 2] = 240;
   const fakeImageData = { data: pixels, width, height, colorSpace: "srgb" } as ImageData;
   const result = applyDetailFilters(fakeImageData, width, height, 0, 100);
   assert.ok(result.data[center] < 240);
@@ -60,4 +48,13 @@ test("detail filters alter noisy center pixels without changing alpha", () => {
 test("neutral tone curve produces an identity LUT", () => {
   const lut = createToneCurveLut(DEFAULT_ADJUSTMENTS);
   for (let value = 0; value < 256; value += 1) assert.equal(lut[value], value);
+});
+
+test("neutral HSL mixer preserves representative colors", () => {
+  for (const sample of [[255, 80, 40], [40, 180, 90], [50, 90, 240]]) {
+    const result = applyColorMixer(sample[0], sample[1], sample[2], DEFAULT_ADJUSTMENTS);
+    assert.ok(Math.abs(result.r - sample[0]) < 1);
+    assert.ok(Math.abs(result.g - sample[1]) < 1);
+    assert.ok(Math.abs(result.b - sample[2]) < 1);
+  }
 });

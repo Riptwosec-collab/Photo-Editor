@@ -4,6 +4,7 @@ import "./globals.css";
 import "./phase-two.css";
 import "./tone-curve.css";
 import "./versions.css";
+import "./color-mixer.css";
 import "./export-center.css";
 import "./import-tools.css";
 import { Providers } from "@/components/providers";

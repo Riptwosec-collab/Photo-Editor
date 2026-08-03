@@ -2,14 +2,8 @@ import { DEFAULT_GEOMETRY } from "./defaults";
 import type { Adjustments, AspectRatio, Geometry } from "./types";
 
 const clamp = (value: number) => Math.max(0, Math.min(255, value));
-
 export type CropRect = { sx: number; sy: number; sw: number; sh: number };
-
-const ratioValues: Record<Exclude<AspectRatio, "original">, number> = {
-  "1:1": 1,
-  "4:5": 4 / 5,
-  "16:9": 16 / 9,
-};
+const ratioValues: Record<Exclude<AspectRatio, "original">, number> = { "1:1": 1, "4:5": 4 / 5, "16:9": 16 / 9 };
 
 export function getCropRect(width: number, height: number, aspectRatio: AspectRatio): CropRect {
   if (aspectRatio === "original") return { sx: 0, sy: 0, sw: width, sh: height };
@@ -25,13 +19,7 @@ export function getCropRect(width: number, height: number, aspectRatio: AspectRa
 
 export function createToneCurveLut(adjustments: Adjustments): Uint8ClampedArray {
   const xs = [0, 64, 128, 192, 255];
-  const ys = [
-    0,
-    clamp(64 + adjustments.curveShadows),
-    clamp(128 + adjustments.curveMidtones),
-    clamp(192 + adjustments.curveHighlights),
-    255,
-  ];
+  const ys = [0, clamp(64 + adjustments.curveShadows), clamp(128 + adjustments.curveMidtones), clamp(192 + adjustments.curveHighlights), 255];
   const lut = new Uint8ClampedArray(256);
   for (let segment = 0; segment < xs.length - 1; segment += 1) {
     const startX = xs[segment];
@@ -46,17 +34,82 @@ export function createToneCurveLut(adjustments: Adjustments): Uint8ClampedArray 
   return lut;
 }
 
+type MixerName = "red" | "orange" | "yellow" | "green" | "aqua" | "blue" | "purple" | "magenta";
+const mixerCenters: Array<{ name: MixerName; center: number }> = [
+  { name: "red", center: 0 }, { name: "orange", center: 30 }, { name: "yellow", center: 60 },
+  { name: "green", center: 120 }, { name: "aqua", center: 180 }, { name: "blue", center: 240 },
+  { name: "purple", center: 280 }, { name: "magenta", center: 320 },
+];
+const clampUnit = (value: number) => Math.max(0, Math.min(1, value));
+
+export function rgbToHsl(red: number, green: number, blue: number) {
+  const r = clamp(red) / 255;
+  const g = clamp(green) / 255;
+  const b = clamp(blue) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const lightness = (max + min) / 2;
+  const delta = max - min;
+  if (delta === 0) return { h: 0, s: 0, l: lightness };
+  const saturation = delta / (1 - Math.abs(2 * lightness - 1));
+  let hue = 0;
+  if (max === r) hue = 60 * (((g - b) / delta) % 6);
+  else if (max === g) hue = 60 * ((b - r) / delta + 2);
+  else hue = 60 * ((r - g) / delta + 4);
+  return { h: (hue + 360) % 360, s: saturation, l: lightness };
+}
+
+export function hslToRgb(hue: number, saturation: number, lightness: number) {
+  const h = ((hue % 360) + 360) % 360;
+  const s = clampUnit(saturation);
+  const l = clampUnit(lightness);
+  const chroma = (1 - Math.abs(2 * l - 1)) * s;
+  const x = chroma * (1 - Math.abs(((h / 60) % 2) - 1));
+  const offset = l - chroma / 2;
+  let r = 0, g = 0, b = 0;
+  if (h < 60) [r, g, b] = [chroma, x, 0];
+  else if (h < 120) [r, g, b] = [x, chroma, 0];
+  else if (h < 180) [r, g, b] = [0, chroma, x];
+  else if (h < 240) [r, g, b] = [0, x, chroma];
+  else if (h < 300) [r, g, b] = [x, 0, chroma];
+  else [r, g, b] = [chroma, 0, x];
+  return { r: clamp((r + offset) * 255), g: clamp((g + offset) * 255), b: clamp((b + offset) * 255) };
+}
+
+export function applyColorMixer(red: number, green: number, blue: number, adjustments: Adjustments) {
+  const hsl = rgbToHsl(red, green, blue);
+  if (hsl.s < 0.02) return { r: clamp(red), g: clamp(green), b: clamp(blue) };
+  let totalWeight = 0;
+  let hueShift = 0;
+  let saturationShift = 0;
+  let luminanceShift = 0;
+  for (const mixer of mixerCenters) {
+    const distance = Math.min(Math.abs(hsl.h - mixer.center), 360 - Math.abs(hsl.h - mixer.center));
+    const weight = Math.max(0, 1 - distance / 50);
+    if (!weight) continue;
+    totalWeight += weight;
+    const hueKey = `${mixer.name}Hue` as keyof Adjustments;
+    const saturationKey = `${mixer.name}Saturation` as keyof Adjustments;
+    const luminanceKey = `${mixer.name}Luminance` as keyof Adjustments;
+    hueShift += adjustments[hueKey] * weight;
+    saturationShift += adjustments[saturationKey] * weight;
+    luminanceShift += adjustments[luminanceKey] * weight;
+  }
+  if (!totalWeight) return { r: clamp(red), g: clamp(green), b: clamp(blue) };
+  return hslToRgb(
+    hsl.h + (hueShift / totalWeight) * 0.3,
+    hsl.s + (saturationShift / totalWeight) * 0.0075,
+    hsl.l + (luminanceShift / totalWeight) * 0.0055,
+  );
+}
+
 export function processImageData(data: ImageData, adjustments: Adjustments, seed = 17): ImageData {
   const pixels = data.data;
   const exposure = Math.pow(2, adjustments.exposure);
-  const contrast =
-    (259 * (adjustments.contrast + 255)) / (255 * (259 - adjustments.contrast));
+  const contrast = (259 * (adjustments.contrast + 255)) / (255 * (259 - adjustments.contrast));
   const toneCurve = createToneCurveLut(adjustments);
   let random = seed >>> 0;
-  const rand = () => {
-    random = (1664525 * random + 1013904223) >>> 0;
-    return random / 4294967296;
-  };
+  const rand = () => { random = (1664525 * random + 1013904223) >>> 0; return random / 4294967296; };
 
   for (let index = 0; index < pixels.length; index += 4) {
     let red = pixels[index] * exposure;
@@ -85,6 +138,11 @@ export function processImageData(data: ImageData, adjustments: Adjustments, seed
     green = gray + (green - gray) * saturation;
     blue = gray + (blue - gray) * saturation;
 
+    const mixed = applyColorMixer(red, green, blue, adjustments);
+    red = mixed.r;
+    green = mixed.g;
+    blue = mixed.b;
+
     const clarity = 1 + adjustments.clarity / 180;
     red = 128 + (red - 128) * clarity;
     green = 128 + (green - 128) * clarity;
@@ -96,7 +154,6 @@ export function processImageData(data: ImageData, adjustments: Adjustments, seed
       green += grain;
       blue += grain;
     }
-
     pixels[index] = clamp(red);
     pixels[index + 1] = clamp(green);
     pixels[index + 2] = clamp(blue);
@@ -104,18 +161,11 @@ export function processImageData(data: ImageData, adjustments: Adjustments, seed
   return data;
 }
 
-export function applyDetailFilters(
-  data: ImageData,
-  width: number,
-  height: number,
-  sharpness: number,
-  noiseReduction: number,
-): ImageData {
+export function applyDetailFilters(data: ImageData, width: number, height: number, sharpness: number, noiseReduction: number): ImageData {
   if (sharpness <= 0 && noiseReduction <= 0) return data;
   const source = new Uint8ClampedArray(data.data);
   const softened = new Uint8ClampedArray(source);
   const noiseMix = Math.min(0.72, Math.max(0, noiseReduction / 100) * 0.72);
-
   if (noiseMix > 0) {
     for (let y = 1; y < height - 1; y += 1) {
       for (let x = 1; x < width - 1; x += 1) {
@@ -123,19 +173,14 @@ export function applyDetailFilters(
         for (let channel = 0; channel < 3; channel += 1) {
           let total = 0;
           for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
-            for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
-              total += source[((y + offsetY) * width + (x + offsetX)) * 4 + channel];
-            }
+            for (let offsetX = -1; offsetX <= 1; offsetX += 1) total += source[((y + offsetY) * width + (x + offsetX)) * 4 + channel];
           }
           const average = total / 9;
-          softened[index + channel] = clamp(
-            source[index + channel] * (1 - noiseMix) + average * noiseMix,
-          );
+          softened[index + channel] = clamp(source[index + channel] * (1 - noiseMix) + average * noiseMix);
         }
       }
     }
   }
-
   const detailSource = noiseMix > 0 ? softened : source;
   const sharpenAmount = Math.max(0, sharpness / 100) * 1.45;
   if (sharpenAmount > 0) {
@@ -148,54 +193,25 @@ export function applyDetailFilters(
           const top = detailSource[index - width * 4 + channel];
           const bottom = detailSource[index + width * 4 + channel];
           const localAverage = (left + right + top + bottom) / 4;
-          data.data[index + channel] = clamp(
-            detailSource[index + channel] +
-              (detailSource[index + channel] - localAverage) * sharpenAmount,
-          );
+          data.data[index + channel] = clamp(detailSource[index + channel] + (detailSource[index + channel] - localAverage) * sharpenAmount);
         }
         data.data[index + 3] = detailSource[index + 3];
       }
     }
-  } else {
-    data.data.set(detailSource);
-  }
+  } else data.data.set(detailSource);
   return data;
 }
 
-export function applyVignette(
-  context: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  amount: number,
-) {
+export function applyVignette(context: CanvasRenderingContext2D, width: number, height: number, amount: number) {
   if (amount <= 0) return;
   const radius = Math.max(width, height) * 0.72;
-  const gradient = context.createRadialGradient(
-    width / 2,
-    height / 2,
-    Math.min(width, height) * 0.18,
-    width / 2,
-    height / 2,
-    radius,
-  );
+  const gradient = context.createRadialGradient(width / 2, height / 2, Math.min(width, height) * 0.18, width / 2, height / 2, radius);
   gradient.addColorStop(0, "rgba(0,0,0,0)");
   gradient.addColorStop(1, `rgba(0,0,0,${Math.min(0.78, amount / 110)})`);
-  context.save();
-  context.globalCompositeOperation = "multiply";
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, width, height);
-  context.restore();
+  context.save(); context.globalCompositeOperation = "multiply"; context.fillStyle = gradient; context.fillRect(0, 0, width, height); context.restore();
 }
 
-export function renderToCanvas(
-  source: CanvasImageSource,
-  sourceWidth: number,
-  sourceHeight: number,
-  canvas: HTMLCanvasElement,
-  adjustments: Adjustments,
-  geometry: Geometry = DEFAULT_GEOMETRY,
-  maxDimension = 1800,
-) {
+export function renderToCanvas(source: CanvasImageSource, sourceWidth: number, sourceHeight: number, canvas: HTMLCanvasElement, adjustments: Adjustments, geometry: Geometry = DEFAULT_GEOMETRY, maxDimension = 1800) {
   const crop = getCropRect(sourceWidth, sourceHeight, geometry.aspectRatio);
   const quarterTurn = geometry.rotation === 90 || geometry.rotation === 270;
   const visualWidth = quarterTurn ? crop.sh : crop.sw;
@@ -203,42 +219,15 @@ export function renderToCanvas(
   const scale = Math.min(1, maxDimension / Math.max(visualWidth, visualHeight));
   const width = Math.max(1, Math.round(visualWidth * scale));
   const height = Math.max(1, Math.round(visualHeight * scale));
-  canvas.width = width;
-  canvas.height = height;
-
+  canvas.width = width; canvas.height = height;
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error("Canvas 2D is unavailable");
-
-  context.save();
-  context.translate(width / 2, height / 2);
-  context.rotate((geometry.rotation * Math.PI) / 180);
-  context.scale(geometry.flipX ? -1 : 1, geometry.flipY ? -1 : 1);
-  context.drawImage(
-    source,
-    crop.sx,
-    crop.sy,
-    crop.sw,
-    crop.sh,
-    (-crop.sw * scale) / 2,
-    (-crop.sh * scale) / 2,
-    crop.sw * scale,
-    crop.sh * scale,
-  );
+  context.save(); context.translate(width / 2, height / 2); context.rotate((geometry.rotation * Math.PI) / 180); context.scale(geometry.flipX ? -1 : 1, geometry.flipY ? -1 : 1);
+  context.drawImage(source, crop.sx, crop.sy, crop.sw, crop.sh, (-crop.sw * scale) / 2, (-crop.sh * scale) / 2, crop.sw * scale, crop.sh * scale);
   context.restore();
-
   const data = context.getImageData(0, 0, width, height);
   const colorAdjusted = processImageData(data, adjustments);
-  context.putImageData(
-    applyDetailFilters(
-      colorAdjusted,
-      width,
-      height,
-      adjustments.sharpness,
-      adjustments.noiseReduction,
-    ),
-    0,
-    0,
-  );
+  context.putImageData(applyDetailFilters(colorAdjusted, width, height, adjustments.sharpness, adjustments.noiseReduction), 0, 0);
   applyVignette(context, width, height, adjustments.vignette);
   return { width, height, crop };
 }
