@@ -16,6 +16,9 @@ export type Adjustments = {
   noiseReduction: number;
   vignette: number;
   grain: number;
+  curveShadows: number;
+  curveMidtones: number;
+  curveHighlights: number;
 };
 
 export type AspectRatio = "original" | "1:1" | "4:5" | "16:9";

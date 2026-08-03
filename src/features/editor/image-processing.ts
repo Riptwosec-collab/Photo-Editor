@@ -23,11 +23,35 @@ export function getCropRect(width: number, height: number, aspectRatio: AspectRa
   return { sx: 0, sy: (height - sh) / 2, sw: width, sh };
 }
 
+export function createToneCurveLut(adjustments: Adjustments): Uint8ClampedArray {
+  const xs = [0, 64, 128, 192, 255];
+  const ys = [
+    0,
+    clamp(64 + adjustments.curveShadows),
+    clamp(128 + adjustments.curveMidtones),
+    clamp(192 + adjustments.curveHighlights),
+    255,
+  ];
+  const lut = new Uint8ClampedArray(256);
+  for (let segment = 0; segment < xs.length - 1; segment += 1) {
+    const startX = xs[segment];
+    const endX = xs[segment + 1];
+    const startY = ys[segment];
+    const endY = ys[segment + 1];
+    for (let value = startX; value <= endX; value += 1) {
+      const progress = (value - startX) / Math.max(1, endX - startX);
+      lut[value] = clamp(startY + (endY - startY) * progress);
+    }
+  }
+  return lut;
+}
+
 export function processImageData(data: ImageData, adjustments: Adjustments, seed = 17): ImageData {
   const pixels = data.data;
   const exposure = Math.pow(2, adjustments.exposure);
   const contrast =
     (259 * (adjustments.contrast + 255)) / (255 * (259 - adjustments.contrast));
+  const toneCurve = createToneCurveLut(adjustments);
   let random = seed >>> 0;
   const rand = () => {
     random = (1664525 * random + 1013904223) >>> 0;
@@ -48,9 +72,9 @@ export function processImageData(data: ImageData, adjustments: Adjustments, seed
     red += shadowLift + highlightShift + endpoints;
     green += shadowLift + highlightShift + endpoints;
     blue += shadowLift + highlightShift + endpoints;
-    red = contrast * (red - 128) + 128;
-    green = contrast * (green - 128) + 128;
-    blue = contrast * (blue - 128) + 128;
+    red = toneCurve[Math.round(clamp(contrast * (red - 128) + 128))];
+    green = toneCurve[Math.round(clamp(contrast * (green - 128) + 128))];
+    blue = toneCurve[Math.round(clamp(contrast * (blue - 128) + 128))];
     red += adjustments.temperature * 0.42 + adjustments.tint * 0.12;
     blue -= adjustments.temperature * 0.42;
     green -= adjustments.tint * 0.25;

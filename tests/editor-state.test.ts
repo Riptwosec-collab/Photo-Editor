@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY, PRESETS } from "../src/features/editor/defaults";
 import { createLocalEditPlan } from "../src/features/ai/local-provider";
-import { applyDetailFilters, getCropRect } from "../src/features/editor/image-processing";
+import { applyDetailFilters, createToneCurveLut, getCropRect } from "../src/features/editor/image-processing";
 
 test("default adjustment recipe is neutral", () => {
   for (const value of Object.values(DEFAULT_ADJUSTMENTS)) assert.equal(value, 0);
@@ -55,4 +55,9 @@ test("detail filters alter noisy center pixels without changing alpha", () => {
   const result = applyDetailFilters(fakeImageData, width, height, 0, 100);
   assert.ok(result.data[center] < 240);
   assert.equal(result.data[center + 3], 255);
+});
+
+test("neutral tone curve produces an identity LUT", () => {
+  const lut = createToneCurveLut(DEFAULT_ADJUSTMENTS);
+  for (let value = 0; value < 256; value += 1) assert.equal(lut[value], value);
 });

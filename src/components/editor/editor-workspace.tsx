@@ -7,6 +7,7 @@ import { AdjustmentPanel } from "./adjustment-panel";
 import { AiPanel } from "./ai-panel";
 import { CanvasStage } from "./canvas-stage";
 import { GeometryPanel } from "./geometry-panel";
+import { ToneCurvePanel } from "./tone-curve-panel";
 import { ImportZone } from "./import-zone";
 import { PresetStrip } from "./preset-strip";
 import { useEditorStore } from "@/features/editor/store";
@@ -27,7 +28,7 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   const future = useEditorStore((state) => state.future);
   const toggleOriginal = useEditorStore((state) => state.toggleOriginal);
   const showOriginal = useEditorStore((state) => state.showOriginal);
-  const [tab, setTab] = useState<"adjust" | "geometry" | "ai">("adjust");
+  const [tab, setTab] = useState<"adjust" | "curve" | "geometry" | "ai">("adjust");
   const [notice, setNotice] = useState("");
   const [loadingProject, setLoadingProject] = useState(Boolean(initialProjectId));
   const loadedObjectUrl = useRef<string | null>(null);
@@ -174,12 +175,13 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           {image && <PresetStrip />}
         </main>
         <aside className="right-panel">
-          <div className="panel-tabs three-tabs">
+          <div className="panel-tabs four-tabs">
             <button className={tab === "adjust" ? "active" : ""} onClick={() => setTab("adjust")}>Adjust</button>
+            <button className={tab === "curve" ? "active" : ""} onClick={() => setTab("curve")}>Curve</button>
             <button className={tab === "geometry" ? "active" : ""} onClick={() => setTab("geometry")}>Crop</button>
             <button className={tab === "ai" ? "active" : ""} onClick={() => setTab("ai")}>AI Plan</button>
           </div>
-          {tab === "adjust" ? <AdjustmentPanel /> : tab === "geometry" ? <GeometryPanel /> : <AiPanel />}
+          {tab === "adjust" ? <AdjustmentPanel /> : tab === "curve" ? <ToneCurvePanel /> : tab === "geometry" ? <GeometryPanel /> : <AiPanel />}
         </aside>
       </div>
     </AppShell>
