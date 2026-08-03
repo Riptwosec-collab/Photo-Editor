@@ -1,0 +1,1 @@
+.import-actions{display:flex;justify-content:center;gap:.5rem;margin-top:.75rem}.import-actions .button{font-size:.72rem}.import-zone small{color:var(--dim);font-size:.65rem}@media(max-width:600px){.import-actions{flex-wrap:wrap}.import-actions .button{flex:1}}
