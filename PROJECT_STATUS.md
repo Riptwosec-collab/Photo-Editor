@@ -1,25 +1,25 @@
 # Project Status
 
-Last updated: 2026-08-03 19:50 (Asia/Bangkok)
-Current phase: Phase 30 release validation completed; Phase 3 cloud foundation next
-Current milestone: Merge validated local-first editor MVP, then add Supabase-backed protected sync
+Last updated: 2026-08-03 20:08 (Asia/Bangkok)
+Current phase: Phase 3 cloud foundation and production-domain repair
+Current milestone: Restore the Supabase project and publish the validated local-first editor to the production aliases
 Overall completion: 47% weighted, evidence-qualified
-Current branch: agent/release-validation
+Current branch: main
 Build status: PASS — GitHub Actions validate job and Vercel preview deployment
 Lint status: PASS — 0 warnings
 Type-check status: PASS
 Test status: PASS — 7/7 core unit tests and 3/3 Chromium E2E flows
-Deployment status: READY on Vercel preview; production visual inspection remains access-protected
+Deployment status: REDEPLOYING — `photo-editor-rouge.vercel.app` returned Vercel `404 NOT_FOUND`; a new main deployment is being triggered
 
 ## Current Task
-Task: Finalize PR #1 after successful CI and browser validation
-Status: TESTED
+Task: Repair the production alias after PR #1 was merged without a new production deployment
+Status: IN PROGRESS
 Started: 2026-08-03
-Completed: 2026-08-03
-Files changed: Application, editor engine, persistence, routes, tests, CI, migration and documentation
-Dependencies added: Next.js 16, React 19, Zustand, TanStack Query, Zod, Lucide, Supabase clients, Playwright
-Database changes: IndexedDB v3 active; Supabase migration exists but is NOT APPLIED
-API changes: `POST /api/ai/plan` with Zod validation and explicit local demo provider
+Completed: Not completed
+Files changed: Project status only; application source remains the tested PR #1 revision
+Dependencies added: None
+Database changes: None in this task; Supabase project restore remains in progress
+API changes: None
 Known limitations: Cloud AI, RAW, masks/layers, beauty, generative editing, collaboration, community, marketplace payments and applied cloud security remain incomplete
 
 ## Completed Modules
@@ -51,10 +51,11 @@ Known limitations: Cloud AI, RAW, masks/layers, beauty, generative editing, coll
 - Personal preset creation appears in the Preset Library.
 
 ## Current Blockers
-- Supabase target and credentials are not configured.
+- Production alias `photo-editor-rouge.vercel.app` is not attached to a live deployment yet.
+- Supabase project is restoring and cannot be safely migrated yet.
 - Supabase migration and owner RLS have not been applied or permission-tested.
 - Real AI/generative provider is not configured.
-- Protected deployment prevents unauthenticated production visual-inspection claims.
+- Vercel Deployment Protection may require an authenticated share link for external visual inspection.
 
 ## Next Recommended Task
-Merge PR #1, then configure Supabase Auth/Storage, apply owner RLS, add permission tests and implement optional cloud sync without replacing the working local-first editor.
+Wait for the new main deployment to reach READY, verify every production alias, then resume Supabase schema/RLS and protected cloud-sync work.
