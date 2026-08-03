@@ -1,5 +1,6 @@
-import type { Adjustments, EditorPreset } from "./types";
+import type { Adjustments, EditorPreset, Geometry } from "./types";
 export const DEFAULT_ADJUSTMENTS: Adjustments = { exposure:0,contrast:0,highlights:0,shadows:0,whites:0,blacks:0,temperature:0,tint:0,vibrance:0,saturation:0,clarity:0,sharpness:0,noiseReduction:0,vignette:0,grain:0 };
+export const DEFAULT_GEOMETRY: Geometry = { rotation:0, flipX:false, flipY:false, aspectRatio:"original" };
 export const PRESETS: EditorPreset[] = [
   { id:"natural", name:"Natural", description:"Balanced light and color", adjustments:{ exposure:.12, contrast:6, highlights:-12, shadows:14, vibrance:8, clarity:3 } },
   { id:"cinematic", name:"Cinematic", description:"Deep contrast with cooler shadows", adjustments:{ exposure:-.08, contrast:18, highlights:-24, shadows:10, temperature:-7, tint:4, saturation:-8, clarity:12, vignette:22, grain:10 } },
