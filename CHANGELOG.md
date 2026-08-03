@@ -18,11 +18,23 @@
 ### Changed
 - Project advanced from recovery-only documentation to functional browser-editor MVP.
 - Weighted completion updated from 18% historical to 31% evidence-qualified.
+- Build pipeline now executes lint, type-check, unit tests and Next production build.
+
+### Fixed
+- Replaced an invalid Lucide `Batch` icon import.
+- Removed all ESLint warnings from the validated build.
+
+### Validation
+- Lint PASS with zero warnings.
+- Type-check PASS.
+- Unit tests PASS 3/3.
+- Production build PASS.
+- Vercel deployment READY.
 
 ### Security
 - Added hardening headers, upload checks, request validation and draft owner RLS.
 
 ### Known limitations
-- Full validation could not run because npm registry access was unavailable.
 - Sharpness and denoise are state-only.
+- Supabase migration is not applied.
 - Advanced modules remain incomplete.
