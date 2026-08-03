@@ -67,7 +67,7 @@ test("local editing, project, snapshot and export flow", async ({ page }) => {
   await page.getByRole("button", { name: /Export and download/ }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/instagram-feed\.jpg$/);
-  await expect(page.getByRole("status")).toContainText(/Exported/);
+  await expect(page.locator(".export-status")).toContainText(/Exported/);
 });
 
 test("personal preset can be saved and appears in library", async ({ page }) => {
