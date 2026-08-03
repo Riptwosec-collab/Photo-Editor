@@ -50,8 +50,11 @@ export function ProjectDashboard({ mode = "projects" }: { mode?: "projects" | "g
   }, [showArchived]);
 
   useEffect(() => {
-    void refresh();
+    const timer = window.setTimeout(() => {
+      void refresh();
+    }, 0);
     return () => {
+      window.clearTimeout(timer);
       urls.current.forEach((url) => URL.revokeObjectURL(url));
       urls.current = [];
     };
