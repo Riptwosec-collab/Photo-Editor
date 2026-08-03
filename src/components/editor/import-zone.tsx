@@ -7,6 +7,23 @@ import { useEditorStore } from "@/features/editor/store";
 const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
 const maxSize = 30 * 1024 * 1024;
 
+async function decodeDimensions(file: File, objectUrl: string) {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const dimensions = { width: bitmap.width, height: bitmap.height };
+      bitmap.close();
+      return dimensions;
+    } catch {
+      // Some headless/browser decoders reject otherwise valid images. Fall back to Image.decode().
+    }
+  }
+  const image = new Image();
+  image.src = objectUrl;
+  await image.decode();
+  return { width: image.naturalWidth, height: image.naturalHeight };
+}
+
 export function ImportZone() {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
@@ -34,18 +51,20 @@ export function ImportZone() {
       let objectUrl: string | null = null;
       try {
         objectUrl = URL.createObjectURL(file);
-        const bitmap = await createImageBitmap(file);
+        const dimensions = await decodeDimensions(file, objectUrl);
+        if (!dimensions.width || !dimensions.height) {
+          throw new Error("Image dimensions are unavailable");
+        }
         setImage({
           name:
             file.name ||
             `clipboard-${Date.now()}.${file.type === "image/png" ? "png" : "jpg"}`,
           type: file.type,
           size: file.size,
-          width: bitmap.width,
-          height: bitmap.height,
+          width: dimensions.width,
+          height: dimensions.height,
           objectUrl,
         });
-        bitmap.close();
         objectUrl = null;
       } catch {
         if (objectUrl) URL.revokeObjectURL(objectUrl);
