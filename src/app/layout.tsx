@@ -8,6 +8,7 @@ import "./color-mixer.css";
 import "./presets.css";
 import "./export-center.css";
 import "./import-tools.css";
+import "./interaction-fixes.css";
 import { Providers } from "@/components/providers";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
