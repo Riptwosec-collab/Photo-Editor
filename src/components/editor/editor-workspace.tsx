@@ -8,8 +8,10 @@ import { AiPanel } from "./ai-panel";
 import { CanvasStage } from "./canvas-stage";
 import { GeometryPanel } from "./geometry-panel";
 import { ToneCurvePanel } from "./tone-curve-panel";
+import { VersionPanel } from "./version-panel";
 import { ImportZone } from "./import-zone";
 import { PresetStrip } from "./preset-strip";
+import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
 import { useEditorStore } from "@/features/editor/store";
 import { renderToCanvas } from "@/features/editor/image-processing";
 import { getProject, saveProject } from "@/lib/idb";
@@ -28,7 +30,7 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   const future = useEditorStore((state) => state.future);
   const toggleOriginal = useEditorStore((state) => state.toggleOriginal);
   const showOriginal = useEditorStore((state) => state.showOriginal);
-  const [tab, setTab] = useState<"adjust" | "curve" | "geometry" | "ai">("adjust");
+  const [tab, setTab] = useState<"adjust" | "curve" | "geometry" | "versions" | "ai">("adjust");
   const [notice, setNotice] = useState("");
   const [loadingProject, setLoadingProject] = useState(Boolean(initialProjectId));
   const loadedObjectUrl = useRef<string | null>(null);
@@ -51,7 +53,10 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           objectUrl,
         });
         setCurrentProjectId(project.id);
-        loadRecipe(project.adjustments, project.geometry);
+        loadRecipe(
+          { ...DEFAULT_ADJUSTMENTS, ...project.adjustments },
+          { ...DEFAULT_GEOMETRY, ...project.geometry },
+        );
         setNotice(`Opened ${project.name}`);
       })
       .catch((error: unknown) => {
@@ -175,13 +180,14 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           {image && <PresetStrip />}
         </main>
         <aside className="right-panel">
-          <div className="panel-tabs four-tabs">
+          <div className="panel-tabs five-tabs">
             <button className={tab === "adjust" ? "active" : ""} onClick={() => setTab("adjust")}>Adjust</button>
             <button className={tab === "curve" ? "active" : ""} onClick={() => setTab("curve")}>Curve</button>
             <button className={tab === "geometry" ? "active" : ""} onClick={() => setTab("geometry")}>Crop</button>
+            <button className={tab === "versions" ? "active" : ""} onClick={() => setTab("versions")}>Versions</button>
             <button className={tab === "ai" ? "active" : ""} onClick={() => setTab("ai")}>AI Plan</button>
           </div>
-          {tab === "adjust" ? <AdjustmentPanel /> : tab === "curve" ? <ToneCurvePanel /> : tab === "geometry" ? <GeometryPanel /> : <AiPanel />}
+          {tab === "adjust" ? <AdjustmentPanel /> : tab === "curve" ? <ToneCurvePanel /> : tab === "geometry" ? <GeometryPanel /> : tab === "versions" ? <VersionPanel projectId={currentProjectId} /> : <AiPanel />}
         </aside>
       </div>
     </AppShell>

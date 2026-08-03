@@ -73,3 +73,28 @@ export type StoredProject = {
   geometry: Geometry;
   archivedAt?: string;
 };
+
+export type StoredVersion = {
+  id: string;
+  projectId: string;
+  name: string;
+  note?: string;
+  createdAt: string;
+  adjustments: Adjustments;
+  geometry: Geometry;
+};
+
+export type ExportFormat = "image/jpeg" | "image/png" | "image/webp";
+
+export type ExportRecord = {
+  id: string;
+  projectId: string;
+  createdAt: string;
+  format: ExportFormat;
+  quality: number;
+  longEdge: number;
+  width: number;
+  height: number;
+  filename: string;
+  colorSpace: "sRGB";
+};

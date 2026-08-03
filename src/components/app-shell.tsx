@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Aperture,
   Bot,
+  Download,
   FolderKanban,
   Images,
   LayoutDashboard,
@@ -26,6 +27,7 @@ const items = [
   ["/batch", "Batch", ListChecks],
   ["/gallery", "Gallery", Images],
   ["/projects", "Projects", FolderKanban],
+  ["/export-center", "Export", Download],
   ["/presets", "Presets", Palette],
   ["/community", "Community", Users],
   ["/marketplace", "Marketplace", ShoppingBag],
