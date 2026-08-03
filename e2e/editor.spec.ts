@@ -46,7 +46,7 @@ test("local editing, project, snapshot and export flow", async ({ page }) => {
   });
   await expectCanvasOrReport(page);
 
-  const exposure = page.getByLabel("Exposure");
+  const exposure = page.getByRole("slider", { name: "Exposure" });
   await exposure.focus();
   await exposure.press("ArrowRight");
   await expect(exposure).not.toHaveValue("0");
