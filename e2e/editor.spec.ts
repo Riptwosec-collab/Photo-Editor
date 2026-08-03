@@ -5,12 +5,29 @@ const png = Buffer.from(
   "base64",
 );
 
+async function expectCanvasOrReport(page: import("@playwright/test").Page) {
+  try {
+    await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+  } catch (error) {
+    console.log("PAGE CONTENT AFTER IMPORT:\n", await page.locator("body").innerText());
+    throw error;
+  }
+}
+
 test.beforeEach(async ({ page }, testInfo) => {
   page.on("console", (message) => {
-    if (message.type() === "error") testInfo.attach("browser-console-error", { body: message.text(), contentType: "text/plain" });
+    if (message.type() === "error") {
+      void testInfo.attach("browser-console-error", {
+        body: message.text(),
+        contentType: "text/plain",
+      });
+    }
   });
   page.on("pageerror", (error) => {
-    testInfo.attach("page-error", { body: error.stack ?? error.message, contentType: "text/plain" });
+    void testInfo.attach("page-error", {
+      body: error.stack ?? error.message,
+      contentType: "text/plain",
+    });
   });
 });
 
@@ -27,7 +44,7 @@ test("local editing, project, snapshot and export flow", async ({ page }) => {
     mimeType: "image/png",
     buffer: png,
   });
-  await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+  await expectCanvasOrReport(page);
 
   const exposure = page.getByLabel("Exposure");
   await exposure.focus();
@@ -60,7 +77,7 @@ test("personal preset can be saved and appears in library", async ({ page }) => 
     mimeType: "image/png",
     buffer: png,
   });
-  await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+  await expectCanvasOrReport(page);
   page.once("dialog", async (dialog) => dialog.accept("E2E Look"));
   await page.getByRole("button", { name: /Save current/ }).click();
   await expect(page.getByRole("button", { name: /E2E Look/ })).toBeVisible();

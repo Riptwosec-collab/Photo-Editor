@@ -66,9 +66,14 @@ export function ImportZone() {
           objectUrl,
         });
         objectUrl = null;
-      } catch {
+      } catch (decodeError) {
+        console.error("LumaForge image decode failed", decodeError);
         if (objectUrl) URL.revokeObjectURL(objectUrl);
-        setError("ไม่สามารถถอดรหัสภาพนี้ได้");
+        setError(
+          decodeError instanceof Error
+            ? `ไม่สามารถถอดรหัสภาพนี้ได้: ${decodeError.message}`
+            : "ไม่สามารถถอดรหัสภาพนี้ได้",
+        );
         setSourceLabel("Try another supported image");
       } finally {
         setLoading(false);
