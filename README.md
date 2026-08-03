@@ -1,52 +1,40 @@
-# LumaForge AI Studio / Photo Editor
+# LumaForge AI Studio
 
-Premium AI photo-editing web application planned to combine professional manual color controls, portrait retouching, non-destructive editing, AI-assisted workflows, batch processing, project management, collaboration, marketplace, and responsive desktop/tablet/mobile experiences.
+A dark-first, non-destructive browser photo editor built with Next.js 16, React 19 and TypeScript.
 
-## Current Repository State
+## Functional in this repository
 
-This repository currently contains **project-control, audit, architecture, testing, and recovery documentation only**. The previously audited application source is not present in the current runtime and was not present in this repository when it was inspected.
+- JPG/PNG/WebP import with validation and decode errors
+- Real Canvas pixel processing for light, color, detail, vignette and grain
+- Zoom, pan and press-to-compare original
+- Undo/redo with persisted adjustment history
+- Five functional presets
+- Transparent local rule-based edit plans, clearly labeled as DEMO rather than cloud AI
+- JPEG/PNG browser export from the rendered result
+- Responsive desktop/tablet/mobile shell
+- Zod-validated API route
+- Initial Supabase schema and RLS migration (not applied)
+- Unit and Playwright test definitions
+- GitHub Actions validation workflow
 
-Do not report the application as production-ready or treat historical build results as current validation.
+## Honest limitations
 
-## Evidence Summary
+RAW decoding, masks, layers, beauty segmentation, generative AI, batch processing, authentication, cloud persistence, collaboration, marketplace payments and production deployment are not complete. Status pages describe these gaps rather than presenting fake functionality.
 
-- Historical weighted implementation estimate: **18%**
-- Current phase: **Phase 0 — Project Audit / Source Recovery**
-- Current application build: **NOT RUN**
-- Current type-check: **NOT RUN**
-- Current tests: **NOT RUN**
-- Repository bootstrap: **COMPLETE**
-- Application source recovery: **BLOCKED**
+## Run
 
-Historical records indicate that a Next.js 16 / React 19 / TypeScript workspace previously existed at `/home/oai/share/ai-photo-editor` and passed development-server, production-build, and type-check validation. Those files must be restored before the results can be reproduced.
+```bash
+npm install
+npm run dev
+```
 
-## Required Recovery Contents
+Validation:
 
-Restore the previous application into this repository with at least:
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
 
-- `package.json` and the original lockfile
-- Application source tree
-- Next.js, TypeScript, Tailwind, and lint configuration
-- Supabase schema, migrations, and storage configuration
-- `.env.example` without secrets
-- Existing tests and fixtures
-- Deployment configuration
-
-Do not upload `.env*` secrets, API keys, production credentials, `node_modules`, `.next`, build artifacts, or private user images.
-
-## Project-Control Documents
-
-- [`PROJECT_STATUS.md`](PROJECT_STATUS.md)
-- [`PROJECT_AUDIT.md`](PROJECT_AUDIT.md)
-- [`DEVELOPMENT_PLAN.md`](DEVELOPMENT_PLAN.md)
-- [`FEATURE_MATRIX.md`](FEATURE_MATRIX.md)
-- [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md)
-- [`ARCHITECTURE.md`](ARCHITECTURE.md)
-- [`TEST_REPORT.md`](TEST_REPORT.md)
-- [`SOURCE_RECOVERY.md`](SOURCE_RECOVERY.md)
-- [`CHANGELOG.md`](CHANGELOG.md)
-- [`SESSION_REPORT_2026-08-03.md`](SESSION_REPORT_2026-08-03.md)
-
-## Next Required Task
-
-Restore the exact previous application source into this repository, then rerun the complete Phase 0 audit: install, development server, production build, lint, type-check, tests, routes, interactive controls, mocks, APIs, database/RLS, security, responsive behavior, accessibility, and deployment mapping.
+The current execution environment could not access the npm registry, so dependency installation and the full Next.js validation suite must run through GitHub Actions or a network-enabled workstation.

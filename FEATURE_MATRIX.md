@@ -1,58 +1,28 @@
 # Feature Matrix — LumaForge AI Studio
 
-Last updated: 2026-08-03 17:30 (Asia/Bangkok)
-Evidence state: Historical code audit available; current source unavailable for revalidation.
-Historical weighted completion estimate: 18%.
-
-Legend:
-- `Historical` means observed in the prior unavailable workspace.
-- `Current` means reproducible in this session.
-- No feature is marked COMPLETE because current source and tests are unavailable.
+Last updated: 2026-08-03 17:55 (Asia/Bangkok)
 
 | Feature | UI | Frontend Logic | Backend | Database | AI Integration | Responsive | Tested | Status | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| Foundation and application shell | Historical Yes | Historical Partial | No evidence | No evidence | N/A | Historical Partial | Build/type only | PARTIAL | Next.js/React/TypeScript shell previously ran; current source unavailable |
-| Design system | Historical Yes | Historical Partial | N/A | N/A | N/A | Historical Partial | No component tests | UI ONLY | Dark professional UI and shared controls existed historically |
-| Landing/entry experience | Historical Partial | Historical Partial | No | No | Mock | Historical Partial | No E2E | MOCK | Requires route and CTA re-audit |
-| Authentication and onboarding | Historical UI | Unverified | Unverified | Unverified | N/A | Historical Partial | No | UI ONLY | No verified protected-route/session flow |
-| Dashboard and projects | Historical Yes | Mock | No | No | Mock | Historical Partial | No | MOCK | Demo projects/data; persistence not verified |
-| Image import | Historical UI | Unverified | No | No | No | Historical Partial | No | UI ONLY | Real decoding, validation, metadata, retry, and persistence not proven |
-| Core editor canvas | Historical Yes | Mock/Partial | No | No | No | Historical Partial | No | MOCK | Controls existed; real processing pipeline not verified |
-| Manual adjustments | Historical Yes | Mock/Partial | No | No | N/A | Historical Partial | No | MOCK | Slider state existed; pixel output and persistence not proven |
-| Color tools and curves | Historical Partial | Mock | No | No | No | Historical Partial | No | MOCK | Requires real color pipeline and tests |
-| Crop and geometry | Historical Partial | Mock/Partial | No | No | No | Historical Partial | No | MOCK | Export compliance unverified |
-| Masks and layers | Historical UI | Mock | No | No | Mock | Historical Partial | No | MOCK | No verified segmentation, mask persistence, or compositing |
-| History and versions | Historical UI | Partial local state | No | No | N/A | Historical Partial | No | PARTIAL | Undo/redo UI existed; durable branching/version persistence unverified |
-| Presets | Historical Yes | Mock/Partial | No | No | Mock | Historical Partial | No | MOCK | No verified import/export or persistence |
-| AI provider abstraction | Historical UI only | Mock | No real adapter | No | Mock | Historical Partial | No | MOCK | No verified queue/provider/credit/audit implementation |
-| AI analysis and prompt editing | Historical Yes | Mock | No | No | Mock | Historical Partial | No | MOCK | Results not backed by real image analysis |
-| Beauty Studio | Historical Yes | Mock | No | No | Mock | Historical Partial | No | MOCK | Identity-preserving processing not verified |
-| Generative tools | Historical UI | Mock | No | No | Mock | Historical Partial | No | MOCK | No real object removal/replace/expand provider |
-| Batch editing and culling | Historical Yes | Mock | No | No | Mock | Historical Partial | No | MOCK | No real album processing, pause/resume, or outlier persistence |
-| Gallery and asset management | Historical Yes | Mock | No | No | Mock | Historical Partial | No | MOCK | Demo assets; search/storage not verified |
-| Community and marketplace | Historical Yes | Mock | No | No | N/A | Historical Partial | No | MOCK | No permissions, payments, entitlements, or persistence |
-| Collaboration and client review | Historical UI/Unverified | Mock/Unverified | No | No | N/A | Historical Partial | No | UI ONLY | Realtime roles/comments/approval not verified |
-| Export Center | Historical Yes | Mock | No real renderer | No history | No | Historical Partial | No | MOCK | No proof exported file matches preview |
-| Mobile/tablet/PWA | Historical Partial | Partial | No sync | No offline DB evidence | N/A | Historical Partial | No device tests | PARTIAL | Responsive layouts existed; mobile-specific gestures/offline not proven |
-| Security, privacy, accessibility | Historical Partial UI | Unverified | Unverified | RLS unverified | Consent unverified | Historical Partial | No audit | PARTIAL | Requires full server-side and WCAG review |
-| Performance optimization | Unverified | Unverified | Unverified | Unverified | Unverified | Unverified | No profiling | NOT STARTED | No current source or benchmark evidence |
-| Unit/integration/E2E tests | N/A | N/A | N/A | N/A | N/A | N/A | No suite | NOT STARTED | Historical project had no automated test suite |
-| Repository bootstrap | Yes | N/A | N/A | N/A | N/A | N/A | Verified through GitHub | COMPLETE | Official repository initialized with README and control documents |
-| Deployment and monitoring | N/A | N/A | N/A | N/A | N/A | N/A | No release validation | BLOCKED | No matching Vercel project or application source mapping found |
-
-## Mock Inventory
-
-Historical evidence indicates mock/demo behavior in at least:
-
-- Dashboard metrics and projects
-- Gallery assets and metadata
-- Editor adjustments and processing outcomes
-- AI analysis, prompt edits, and alternatives
-- Beauty tools
-- Batch/culling workflows
-- Presets
-- Marketplace and community
-- Cloud sync/storage indicators
-- Export jobs and results
-
-The exact code locations must be reconstructed from the recovered source before replacement work begins.
+| Foundation and shell | Yes | Yes | N/A | N/A | N/A | Yes | Partial | FUNCTIONAL | Full build pending CI |
+| Image import JPG/PNG/WebP | Yes | Yes | No | No | No | Yes | Partial | FUNCTIONAL | Validation and decoding implemented |
+| RAW/HEIC/TIFF import | No | No | No | No | No | No | No | NOT STARTED | Requires decoders |
+| Core Canvas renderer | Yes | Yes | No | No | No | Yes | Core partial | FUNCTIONAL | Real per-pixel preview/export |
+| Zoom and pan | Yes | Yes | No | No | No | Yes | No browser test | FUNCTIONAL | Pointer and wheel interaction |
+| Before/original compare | Yes | Yes | No | No | No | Yes | No browser test | FUNCTIONAL | Hold button and shortcut |
+| Manual light/color controls | Yes | Yes | No | Local recipe | No | Yes | Core partial | FUNCTIONAL | Real pixel changes |
+| Detail controls | Yes | Partial | No | Local recipe | No | Yes | No | PARTIAL | Sharpness/denoise state-only |
+| Undo/redo | Yes | Yes | No | LocalStorage | No | Yes | Logic inspected | FUNCTIONAL | Bounded history |
+| Presets | Yes | Yes | No | LocalStorage | No | Yes | PASS core | FUNCTIONAL | Five presets |
+| AI edit plan | Yes | Yes | API route | No | Local rules | Yes | PASS core | FUNCTIONAL | Explicit DEMO label |
+| Real AI analysis | Status UI | No | No | No | No | Yes | No | NOT STARTED | Provider next |
+| Export JPEG/PNG | Yes | Yes | No | No | No | Yes | No browser test | FUNCTIONAL | Canvas output |
+| Supabase schema/RLS | N/A | N/A | Planned | SQL created | N/A | N/A | Not applied | READY | Core tables |
+| Authentication | Status UI | No | No | No | N/A | Yes | No | NOT STARTED | No fake login |
+| Beauty/Batch/Gallery | Status UI | No | No | No | No | Yes | No | PLANNED | No fake results |
+| Community/Marketplace | Status UI | No | No | No | N/A | Yes | No | NOT STARTED | No fake feed/checkout |
+| Mobile/tablet | Yes | Yes | N/A | N/A | N/A | Yes | E2E defined | PARTIAL | Device tests pending |
+| PWA shell | Manifest/SW | Partial | No | Cache only | N/A | Yes | No | PARTIAL | Offline projects pending |
+| Automated tests | N/A | Core + E2E definitions | API indirect | No DB tests | Demo tests | Mobile project | Core PASS | PARTIAL | Full suite pending |
+| CI | N/A | Workflow | N/A | N/A | N/A | N/A | Not run | READY | GitHub Actions validates |
+| Deployment | N/A | N/A | N/A | N/A | N/A | N/A | No | NOT STARTED | Vercel pending |

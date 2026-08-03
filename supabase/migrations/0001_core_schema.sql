@@ -1,0 +1,14 @@
+-- PLANNED DATABASE FOUNDATION. Not applied to a live Supabase project in this session.
+create extension if not exists pgcrypto;
+create table if not exists public.profiles (id uuid primary key references auth.users(id) on delete cascade, display_name text, avatar_url text, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table if not exists public.projects (id uuid primary key default gen_random_uuid(), owner_id uuid not null references auth.users(id) on delete cascade, name text not null check(char_length(name) between 1 and 120), status text not null default 'draft' check(status in('draft','editing','review','changes_requested','approved','exported','archived')), created_at timestamptz not null default now(), updated_at timestamptz not null default now(), deleted_at timestamptz);
+create table if not exists public.assets (id uuid primary key default gen_random_uuid(), project_id uuid not null references public.projects(id) on delete cascade, owner_id uuid not null references auth.users(id) on delete cascade, storage_path text not null, mime_type text not null, byte_size bigint not null check(byte_size>0), width integer, height integer, created_at timestamptz not null default now(), deleted_at timestamptz);
+create table if not exists public.edit_versions (id uuid primary key default gen_random_uuid(), project_id uuid not null references public.projects(id) on delete cascade, owner_id uuid not null references auth.users(id) on delete cascade, parent_id uuid references public.edit_versions(id), name text not null default 'Version', recipe jsonb not null default '{}'::jsonb, created_at timestamptz not null default now());
+create index if not exists projects_owner_updated_idx on public.projects(owner_id,updated_at desc) where deleted_at is null;
+create index if not exists assets_project_idx on public.assets(project_id) where deleted_at is null;
+create index if not exists versions_project_created_idx on public.edit_versions(project_id,created_at desc);
+alter table public.profiles enable row level security;alter table public.projects enable row level security;alter table public.assets enable row level security;alter table public.edit_versions enable row level security;
+create policy "profiles_select_own" on public.profiles for select using(auth.uid()=id);create policy "profiles_update_own" on public.profiles for update using(auth.uid()=id) with check(auth.uid()=id);
+create policy "projects_owner_all" on public.projects for all using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
+create policy "assets_owner_all" on public.assets for all using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
+create policy "versions_owner_all" on public.edit_versions for all using(auth.uid()=owner_id) with check(auth.uid()=owner_id);
