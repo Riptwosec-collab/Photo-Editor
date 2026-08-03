@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Aperture, Batch, Bot, FolderKanban, Images, LayoutDashboard, Palette, Settings, ShoppingBag, Sparkles, Users } from "lucide-react";
+import { Aperture, Bot, FolderKanban, Images, LayoutDashboard, ListChecks, Palette, Settings, ShoppingBag, Sparkles, Users } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const items = [
   ["/", "Home", LayoutDashboard], ["/editor", "Editor", Aperture], ["/ai-studio", "AI Studio", Bot],
-  ["/beauty", "Beauty", Sparkles], ["/batch", "Batch", Batch], ["/gallery", "Gallery", Images],
+  ["/beauty", "Beauty", Sparkles], ["/batch", "Batch", ListChecks], ["/gallery", "Gallery", Images],
   ["/projects", "Projects", FolderKanban], ["/presets", "Presets", Palette], ["/community", "Community", Users],
   ["/marketplace", "Marketplace", ShoppingBag], ["/settings", "Settings", Settings]
 ] as const;
