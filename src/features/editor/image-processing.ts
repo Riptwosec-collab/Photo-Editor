@@ -80,6 +80,64 @@ export function processImageData(data: ImageData, adjustments: Adjustments, seed
   return data;
 }
 
+export function applyDetailFilters(
+  data: ImageData,
+  width: number,
+  height: number,
+  sharpness: number,
+  noiseReduction: number,
+): ImageData {
+  if (sharpness <= 0 && noiseReduction <= 0) return data;
+  const source = new Uint8ClampedArray(data.data);
+  const softened = new Uint8ClampedArray(source);
+  const noiseMix = Math.min(0.72, Math.max(0, noiseReduction / 100) * 0.72);
+
+  if (noiseMix > 0) {
+    for (let y = 1; y < height - 1; y += 1) {
+      for (let x = 1; x < width - 1; x += 1) {
+        const index = (y * width + x) * 4;
+        for (let channel = 0; channel < 3; channel += 1) {
+          let total = 0;
+          for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+            for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+              total += source[((y + offsetY) * width + (x + offsetX)) * 4 + channel];
+            }
+          }
+          const average = total / 9;
+          softened[index + channel] = clamp(
+            source[index + channel] * (1 - noiseMix) + average * noiseMix,
+          );
+        }
+      }
+    }
+  }
+
+  const detailSource = noiseMix > 0 ? softened : source;
+  const sharpenAmount = Math.max(0, sharpness / 100) * 1.45;
+  if (sharpenAmount > 0) {
+    for (let y = 1; y < height - 1; y += 1) {
+      for (let x = 1; x < width - 1; x += 1) {
+        const index = (y * width + x) * 4;
+        for (let channel = 0; channel < 3; channel += 1) {
+          const left = detailSource[index - 4 + channel];
+          const right = detailSource[index + 4 + channel];
+          const top = detailSource[index - width * 4 + channel];
+          const bottom = detailSource[index + width * 4 + channel];
+          const localAverage = (left + right + top + bottom) / 4;
+          data.data[index + channel] = clamp(
+            detailSource[index + channel] +
+              (detailSource[index + channel] - localAverage) * sharpenAmount,
+          );
+        }
+        data.data[index + 3] = detailSource[index + 3];
+      }
+    }
+  } else {
+    data.data.set(detailSource);
+  }
+  return data;
+}
+
 export function applyVignette(
   context: CanvasRenderingContext2D,
   width: number,
@@ -145,7 +203,18 @@ export function renderToCanvas(
   context.restore();
 
   const data = context.getImageData(0, 0, width, height);
-  context.putImageData(processImageData(data, adjustments), 0, 0);
+  const colorAdjusted = processImageData(data, adjustments);
+  context.putImageData(
+    applyDetailFilters(
+      colorAdjusted,
+      width,
+      height,
+      adjustments.sharpness,
+      adjustments.noiseReduction,
+    ),
+    0,
+    0,
+  );
   applyVignette(context, width, height, adjustments.vignette);
   return { width, height, crop };
 }
