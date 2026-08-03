@@ -1,27 +1,42 @@
 # Test Report
 
 Date: 2026-08-03
-Final validated deployment commit: `0e7010a`
+
+## Latest completed application validation
 
 | Check | Result | Evidence |
 |---|---|---|
-| Dependency install | PASS | Dependencies restored successfully |
+| Dependency installation | PASS | Vercel restored dependencies |
 | ESLint | PASS | 0 errors, 0 warnings |
 | Full TypeScript | PASS | `tsc --noEmit` |
-| Core unit tests | PASS | 3 tests, 3 pass, 0 fail |
-| Next.js production build | PASS | Next.js 16.1.1 compiled and generated all routes |
-| Route generation | PASS | `/`, `/editor`, `/[section]`, `/api/ai/plan`, manifest |
-| Deployment | PASS | Vercel deployment reached READY |
-| Playwright E2E | NOT RUN | Browser suite defined but not executed |
+| Core unit tests | PASS | 7 tests, 7 pass, 0 fail |
+| Next.js production build | PASS | All current application routes generated |
+| Vercel deployment | PASS | Application deployment completed |
+| Browser E2E | TESTING | PR workflow added; result pending |
 | Supabase migration | NOT RUN | No target project configured |
+| RLS permission tests | NOT RUN | Migration unapplied |
+| Accessibility audit | NOT RUN | Manual/automated audit pending |
+| Performance profiling | NOT RUN | Worker/tile work pending |
 
-## Unit evidence
-- Neutral default adjustment recipe passed.
-- All built-in presets use known adjustment keys.
-- Local AI plan retains explicit DEMO labeling and expected cinematic rule.
+## Unit coverage evidence
 
-## Remaining release gates
-- Browser upload/edit/undo/export E2E with real image fixtures.
-- Supabase migration application and RLS permission tests.
-- Accessibility audit, security audit and performance profiling.
-- Real AI provider validation before any cloud AI feature is labeled functional.
+- Neutral default adjustment/geometry recipe.
+- Built-in preset keys.
+- AI demo transparency label and rule output.
+- Center crop aspect-ratio math.
+- Denoise/detail filter behavior and alpha preservation.
+- Neutral tone-curve identity LUT.
+- Neutral HSL mixer color preservation.
+
+## E2E release flow defined
+
+1. Open landing and editor.
+2. Upload a real PNG payload.
+3. Change Exposure and undo.
+4. Save project to IndexedDB.
+5. Create snapshot.
+6. Open Project dashboard.
+7. Export through Instagram preset and verify download name.
+8. Save a personal preset and verify it appears in Preset Library.
+
+A feature remains below COMPLETE until its required browser/database/security tests pass.

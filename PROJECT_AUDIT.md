@@ -1,42 +1,35 @@
-# Project Audit
+# Project Audit — LumaForge AI Studio
 
 Audit date: 2026-08-03
-Project: LumaForge AI Studio / Photo Editor
+Evidence: Current GitHub source, Vercel build logs and core test output
 
 ## Stack
-- Next.js 16.1.1, React 19.2.3, TypeScript strict
-- Tailwind CSS 4, Zustand, TanStack Query, Zod
-- Canvas 2D image processing
-- Supabase migration draft
-- Playwright and Node test definitions
+- Next.js 16.1.1, React 19.2.3, strict TypeScript, Tailwind CSS 4
+- Zustand, TanStack Query, Canvas 2D
+- IndexedDB v3: projects, versions, exports, presets
+- Optional Supabase client and unapplied SQL/RLS migration
+- Zod API validation, Playwright and Node tests
 
 ## Routes
-- `/` marketing/entry page
-- `/editor` functional editor workspace
-- `/api/ai/plan` validated local edit-plan API
-- `/ai-studio`, `/beauty`, `/batch`, `/gallery`, `/projects`, `/presets`, `/community`, `/marketplace`, `/settings` truthful status pages
+`/`, `/editor`, `/auth`, `/projects`, `/gallery`, `/batch`, `/presets`, `/export-center`, `/api/ai/plan` plus truthful status routes.
 
-## Functional features
-- Browser image import with type, size and decode validation
-- Real per-pixel Canvas editing for core light/color/effect controls
-- Zoom, pan, before/original comparison
-- Undo/redo and locally persisted recipes
-- Functional presets
-- Local transparent edit-plan generation and application
-- Browser JPEG/PNG export path
-- Responsive desktop/tablet/mobile layouts
+## Functional findings
+- JPG/PNG/WebP import by picker, drop, clipboard and camera.
+- Preview, histogram, batch and export share the renderer.
+- Light/color, curve, HSL, sharpness, denoise, clarity, grain and vignette alter pixels.
+- Crop/rotate/flip are non-destructive and undoable.
+- Projects store image blobs and recipes; snapshots restore recipes.
+- Batch progress reflects real processing results.
+- Export history records successful encodes only.
+- Preset JSON accepts known numeric keys only.
 
-## Partial and missing
-- Sharpness and denoise values persist but dedicated kernels are not implemented.
-- Image binary data is not persisted.
-- PWA is shell-only.
-- Supabase schema is not applied.
-- Auth, RAW, curves, crop, masks, layers, real AI, beauty, batch, gallery, collaboration and marketplace remain incomplete.
+## Partial/missing
+- Centered crop only; no free crop/straighten/perspective.
+- Composite curve only; no RGB channels or grading wheels.
+- PWA shell only; no complete offline sync/conflicts.
+- Supabase unapplied; AI is prompt-rule demo.
+- Masks/layers, RAW, beauty/generative tools, collaboration/marketplace absent.
+- E2E requires passing PR run.
 
-## Validation
-- Dependency-free core TypeScript: PASS
-- Core assertions: PASS
-- Full Next build/lint/typecheck/tests: NOT RUN because npm registry access was unavailable
-
-## Recommended next task
-Run GitHub Actions, resolve validation failures, then implement Supabase Auth and durable project persistence.
+## Recommended task
+Pass E2E, then implement Supabase Auth/Storage/RLS with permission tests.

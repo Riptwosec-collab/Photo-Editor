@@ -2,59 +2,39 @@
 
 Last updated: 2026-08-03
 
-## Phase 0 — Project Audit
-Status: COMPLETE for the new repository baseline.
+| Phase | Status | Completion | Evidence / remaining |
+|---|---:|---:|---|
+| 0 Audit | COMPLETE | 100% | Canonical source/docs/validation exist |
+| 1 Foundation | TESTED | 85% | Build passes; logging/error boundary remain |
+| 2 Design system | FUNCTIONAL | 65% | Responsive controls/focus/reduced motion; suite incomplete |
+| 3 Auth/account | PARTIAL | 35% | Guest works; Supabase pending |
+| 4 Projects | FUNCTIONAL | 65% | Local CRUD/archive/search |
+| 5 Import | FUNCTIONAL | 65% | Picker/drop/clipboard/camera; advanced formats pending |
+| 6 Canvas | FUNCTIONAL | 65% | Render/zoom/pan/compare; workers/tiles pending |
+| 7 Manual | FUNCTIONAL | 65% | Pixel adjustments/detail/effects |
+| 8 Color | FUNCTIONAL | 60% | Histogram/curve/HSL; grading/RGB pending |
+| 9 Geometry | FUNCTIONAL | 55% | Ratios/rotate/flip; free crop/perspective pending |
+| 10 Masking | NOT STARTED | 0% | No masks claimed |
+| 11 Layers/history | PARTIAL | 40% | History/snapshots; layers/branches pending |
+| 12 Presets | FUNCTIONAL | 65% | Built-in/personal/import/export CRUD |
+| 13 AI infrastructure | MOCK | 25% | Demo route; queue/provider persistence pending |
+| 14–19 AI/beauty/generative/Style DNA | PLANNED | 5% | Requirements/status only except prompt rules |
+| 20 Batch/culling | PARTIAL | 55% | Real queue; AI culling/consistency pending |
+| 21 Studios | PLANNED | 5% | Status only |
+| 22 Gallery | FUNCTIONAL | 60% | Local asset lifecycle |
+| 23–24 Community/marketplace/collaboration | NOT STARTED | 0% | No fake social/payment states |
+| 25 Export | FUNCTIONAL | 65% | Formats/resize/social/history; metadata/watermark pending |
+| 26 Mobile/PWA | PARTIAL | 50% | Responsive/SW; advanced gestures/offline sync pending |
+| 27 Security/accessibility | PARTIAL | 40% | Validation/headers/draft RLS; audits pending |
+| 28 Performance | PLANNED | 20% | Bounded preview; workers/profiling pending |
+| 29 QA | TESTING | 65% | Unit/build pass; PR E2E pending |
+| 30 Release | PARTIAL | 60% | Vercel READY; monitoring/rollback pending |
 
-## Phase 1 — Foundation and Architecture
-Status: FUNCTIONAL, 80%.
-Completed: Next 16 source, strict TypeScript config, providers, API validation, security headers and CI definition.
-Remaining: Full CI pass, global error boundaries, environment validation and production logging.
-
-## Phase 2 — Design System
-Status: FUNCTIONAL, 70%.
-Completed: Tokens, buttons, panels, sliders, status pills, responsive containers, focus states and reduced motion.
-Remaining: Reusable dialog/drawer/menu primitives, high-contrast mode and component tests.
-
-## Phase 3 — Authentication and Account
-Status: READY, 10%.
-Next: Supabase Auth, guest identity, protected routes, logout, deletion and onboarding.
-
-## Phase 4 — Dashboard and Projects
-Status: PARTIAL, 25%.
-Completed: Local recipe persistence.
-Next: Named project CRUD, IndexedDB asset recovery, Supabase sync and storage usage.
-
-## Phase 5 — Image Import
-Status: FUNCTIONAL MVP, 70%.
-Completed: JPG/PNG/WebP picker, drag/drop, validation, decoding and errors.
-Next: Clipboard, camera, multi-file, metadata, duplicate detection, progress/cancel/retry, RAW and HEIC.
-
-## Phase 6 — Core Editor Canvas
-Status: FUNCTIONAL MVP, 70%.
-Completed: Canvas rendering, zoom, pan, fit, original comparison and responsive layout.
-Next: Full-screen, filmstrip, smart previews, touch refinements and worker rendering.
-
-## Phase 7 — Manual Adjustments
-Status: FUNCTIONAL MVP, 65%.
-Completed: Core light/color/clarity/grain/vignette operations, reset, persistence and history.
-Next: True sharpness/denoise, texture and higher-fidelity tonal math.
-
-## Phases 8–12
-Presets are functional; color curves, crop, masks, layers and branching history are planned.
-
-## Phases 13–19
-Typed AI plan foundation exists as a transparent demo. Real providers, jobs, scene analysis, beauty, generative tools and Style DNA remain planned.
-
-## Phases 20–25
-Export MVP is functional. Batch, studios, gallery, community, collaboration and marketplace remain planned.
-
-## Phases 26–30
-Responsive/PWA shell is partial. Security, performance, QA and production deployment remain planned.
-
-## Immediate execution order
-1. Pass GitHub Actions CI.
-2. Add Supabase Auth and applied core schema/RLS.
-3. Add IndexedDB image/project persistence.
-4. Implement curves and crop/geometry.
-5. Move rendering to Web Worker/OffscreenCanvas.
-6. Add real AI provider abstraction and durable jobs.
+## Immediate order
+1. Pass PR Chromium E2E and merge.
+2. Configure Supabase Auth/Storage and apply RLS.
+3. Add RLS integration tests and cloud sync.
+4. Add free crop/perspective.
+5. Add masks/layers.
+6. Move processing to Worker/OffscreenCanvas.
+7. Add real AI provider/jobs.
