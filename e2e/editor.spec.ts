@@ -7,7 +7,7 @@ const png = Buffer.from(
 
 async function expectCanvasOrReport(page: import("@playwright/test").Page) {
   try {
-    await expect(page.locator("canvas").first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByLabel("Edited image preview")).toBeVisible({ timeout: 15_000 });
   } catch (error) {
     console.log("PAGE CONTENT AFTER IMPORT:\n", await page.locator("body").innerText());
     throw error;
@@ -31,13 +31,14 @@ test.beforeEach(async ({ page }, testInfo) => {
   });
 });
 
-test("landing opens functional editor", async ({ page }) => {
+test("landing opens canonical functional editor", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: /เริ่มแต่งภาพ/ }).click();
   await expect(page.getByText(/ลากภาพมาวาง/)).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
 });
 
-test("local editing, project, snapshot and export flow", async ({ page }) => {
+test("professional editor import compare project version and export flow", async ({ page }) => {
   await page.goto("/editor");
   await page.locator('input[type="file"]').first().setInputFiles({
     name: "fixture.png",
@@ -45,6 +46,9 @@ test("local editing, project, snapshot and export flow", async ({ page }) => {
     buffer: png,
   });
   await expectCanvasOrReport(page);
+  await expect(page.getByLabel("Original image preview")).toBeVisible();
+  await expect(page.getByText("Before", { exact: true })).toBeVisible();
+  await expect(page.getByText("After", { exact: true })).toBeVisible();
 
   const exposure = page.getByRole("slider", { name: "Exposure" });
   await exposure.focus();
@@ -53,9 +57,9 @@ test("local editing, project, snapshot and export flow", async ({ page }) => {
   await page.keyboard.press("Control+z");
   await expect(exposure).toHaveValue("0");
 
-  await page.getByRole("button", { name: /Save project/ }).click();
-  await expect(page.locator(".toast")).toContainText(/Project saved locally/);
-  await page.getByRole("button", { name: "Versions" }).click();
+  await page.getByRole("button", { name: "Save project" }).click();
+  await expect(page.locator(".professional-toast")).toContainText(/Project saved locally/);
+  await page.getByRole("button", { name: "Version history" }).click();
   await page.getByRole("button", { name: /Create snapshot/ }).click();
   await expect(page.locator(".version-status")).toContainText(/Snapshot created/);
 
@@ -70,7 +74,7 @@ test("local editing, project, snapshot and export flow", async ({ page }) => {
   await expect(page.locator(".export-status")).toContainText(/Exported/);
 });
 
-test("personal preset can be saved and appears in library", async ({ page }) => {
+test("AI Auto Enhance and personal preset remain one unified recipe system", async ({ page }) => {
   await page.goto("/editor");
   await page.locator('input[type="file"]').first().setInputFiles({
     name: "preset-fixture.png",
@@ -78,6 +82,10 @@ test("personal preset can be saved and appears in library", async ({ page }) => 
     buffer: png,
   });
   await expectCanvasOrReport(page);
+  await page.getByRole("button", { name: /AI Auto Enhance/ }).click();
+  await page.getByRole("button", { name: "Cinematic" }).click();
+  await expect(page.getByRole("slider", { name: "Contrast" })).not.toHaveValue("0");
+
   page.once("dialog", async (dialog) => dialog.accept("E2E Look"));
   await page.getByRole("button", { name: /Save current/ }).click();
   await expect(page.getByRole("button", { name: /E2E Look/ })).toBeVisible();
