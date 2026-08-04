@@ -62,13 +62,18 @@ function createCube(recipe: Partial<Adjustments>) {
   const temperature = Number(recipe.temperature ?? 0) / 255;
   const tint = Number(recipe.tint ?? 0) / 255;
   const exposure = Math.pow(2, Number(recipe.exposure ?? 0));
-  const lines = ["TITLE \"LumaForge Reference Match\"", `LUT_3D_SIZE ${size}`, "DOMAIN_MIN 0.0 0.0 0.0", "DOMAIN_MAX 1.0 1.0 1.0"];
-  for (let b = 0; b < size; b += 1) {
-    for (let g = 0; g < size; g += 1) {
-      for (let r = 0; r < size; r += 1) {
-        const red = Math.max(0, Math.min(1, (r / (size - 1)) * exposure + temperature * 0.18 + tint * 0.05));
-        const green = Math.max(0, Math.min(1, (g / (size - 1)) * exposure - tint * 0.12));
-        const blue = Math.max(0, Math.min(1, (b / (size - 1)) * exposure - temperature * 0.18 + tint * 0.05));
+  const lines = [
+    "TITLE \"LumaForge Reference Match\"",
+    `LUT_3D_SIZE ${size}`,
+    "DOMAIN_MIN 0.0 0.0 0.0",
+    "DOMAIN_MAX 1.0 1.0 1.0",
+  ];
+  for (let blueIndex = 0; blueIndex < size; blueIndex += 1) {
+    for (let greenIndex = 0; greenIndex < size; greenIndex += 1) {
+      for (let redIndex = 0; redIndex < size; redIndex += 1) {
+        const red = Math.max(0, Math.min(1, (redIndex / (size - 1)) * exposure + temperature * 0.18 + tint * 0.05));
+        const green = Math.max(0, Math.min(1, (greenIndex / (size - 1)) * exposure - tint * 0.12));
+        const blue = Math.max(0, Math.min(1, (blueIndex / (size - 1)) * exposure - temperature * 0.18 + tint * 0.05));
         lines.push(`${red.toFixed(6)} ${green.toFixed(6)} ${blue.toFixed(6)}`);
       }
     }
@@ -87,10 +92,24 @@ const matchModes: Array<{ value: MatchMode; label: string }> = [
   { value: "background", label: "Background" },
 ];
 
+function expandMatchRecipe(
+  base: Partial<Adjustments>,
+  mode: MatchMode,
+  strength: number,
+): Partial<Adjustments> {
+  const amount = strength / 100;
+  if (mode === "film") return { ...base, contrast: 14 * amount, grain: 10 * amount, highlights: -14 * amount };
+  if (mode === "mood") return { ...base, vibrance: 12 * amount, shadowSaturation: 12 * amount, highlightSaturation: 8 * amount };
+  if (mode === "lighting") return { exposure: base.exposure, highlights: -18 * amount, shadows: 18 * amount, whites: 5 * amount };
+  if (mode === "skin-safe") return { ...base, temperature: Number(base.temperature ?? 0) * 0.45, tint: Number(base.tint ?? 0) * 0.45, orangeLuminance: 4 * amount, texture: -4 * amount };
+  if (mode === "subject") return { ...base, clarity: 8 * amount, midtoneContrast: 9 * amount };
+  if (mode === "background") return { ...base, dehaze: 7 * amount, vignette: 12 * amount };
+  return base;
+}
+
 export function ReversePresetSection({ onNotice }: { onNotice: (message: string) => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const image = useEditorStore((state) => state.image);
-  const adjustments = useEditorStore((state) => state.adjustments);
   const apply = useEditorStore((state) => state.applyAdjustments);
   const [reference, setReference] = useState<{ file: File; url: string } | null>(null);
   const [mode, setMode] = useState<MatchMode>("skin-safe");
@@ -113,8 +132,7 @@ export function ReversePresetSection({ onNotice }: { onNotice: (message: string)
       return;
     }
     if (reference) URL.revokeObjectURL(reference.url);
-    const url = URL.createObjectURL(file);
-    setReference({ file, url });
+    setReference({ file, url: URL.createObjectURL(file) });
     setRecipe(null);
     setStatus("idle");
     setMessage(`${file.name} ready for local analysis.`);
@@ -134,16 +152,9 @@ export function ReversePresetSection({ onNotice }: { onNotice: (message: string)
         averageFromUrl(image.objectUrl),
         averageFromUrl(reference.url),
       ]);
-      setProgress(42);
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
-      let nextRecipe = deriveColorMatch(currentAverage, referenceAverage, strength);
-      if (mode === "film") nextRecipe = { ...nextRecipe, contrast: 14 * strength / 100, grain: 10 * strength / 100, highlights: -14 * strength / 100 };
-      if (mode === "mood") nextRecipe = { ...nextRecipe, vibrance: 12 * strength / 100, shadowSaturation: 12 * strength / 100, highlightSaturation: 8 * strength / 100 };
-      if (mode === "lighting") nextRecipe = { exposure: nextRecipe.exposure, highlights: -18 * strength / 100, shadows: 18 * strength / 100, whites: 5 * strength / 100 };
-      if (mode === "skin-safe") nextRecipe = { ...nextRecipe, temperature: Number(nextRecipe.temperature ?? 0) * 0.45, tint: Number(nextRecipe.tint ?? 0) * 0.45, orangeLuminance: 4 * strength / 100, texture: -4 * strength / 100 };
-      if (mode === "subject") nextRecipe = { ...nextRecipe, clarity: 8 * strength / 100, midtoneContrast: 9 * strength / 100 };
-      if (mode === "background") nextRecipe = { ...nextRecipe, dehaze: 7 * strength / 100, vignette: 12 * strength / 100 };
-      setProgress(78);
+      setProgress(48);
+      const base = deriveColorMatch(currentAverage, referenceAverage, strength);
+      const nextRecipe = expandMatchRecipe(base, mode, strength);
       await new Promise((resolve) => window.setTimeout(resolve, 180));
       const distance = Math.abs(referenceAverage.r - currentAverage.r) + Math.abs(referenceAverage.g - currentAverage.g) + Math.abs(referenceAverage.b - currentAverage.b);
       setConfidence(Math.max(58, Math.min(96, Math.round(95 - distance / 8))));
@@ -224,9 +235,12 @@ export function ColorConsistencySection({ onNotice }: { onNotice: (message: stri
     for (const item of references) URL.revokeObjectURL(item.url);
   }, [references]);
 
-  const primary = useMemo(() => references.find((item) => item.id === primaryId) ?? references[0], [primaryId, references]);
+  const primary = useMemo(
+    () => references.find((item) => item.id === primaryId) ?? references[0],
+    [primaryId, references],
+  );
 
-  async function addFiles(files?: FileList) {
+  async function addFiles(files?: FileList | null) {
     if (!files) return;
     const next: ReferenceItem[] = [];
     for (const file of Array.from(files).slice(0, 12)) {
@@ -257,9 +271,7 @@ export function ColorConsistencySection({ onNotice }: { onNotice: (message: stri
       if (recipe.tint !== undefined) recipe.tint *= 0.55;
       recipe.orangeLuminance = 3;
     }
-    if (matchGrade) {
-      recipe = { ...recipe, shadowSaturation: 8 * strength / 100, highlightSaturation: 6 * strength / 100 };
-    }
+    if (matchGrade) recipe = { ...recipe, shadowSaturation: 8 * strength / 100, highlightSaturation: 6 * strength / 100 };
     if (subjectOnly) recipe = { ...recipe, clarity: 6 * strength / 100, midtoneContrast: 7 * strength / 100 };
     if (backgroundOnly) recipe = { ...recipe, dehaze: 5 * strength / 100, vignette: 8 * strength / 100 };
     return recipe;
@@ -271,7 +283,6 @@ export function ColorConsistencySection({ onNotice }: { onNotice: (message: stri
     try {
       const recipe = await buildRecipe();
       setProgress(72);
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
       apply(recipe);
       setProgress(100);
       setStatus("Color consistency applied to the current photo.");
