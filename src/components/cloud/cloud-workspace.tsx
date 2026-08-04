@@ -80,11 +80,7 @@ export function CloudWorkspace() {
   }, [client, session]);
 
   useEffect(() => {
-    if (!client) {
-      setLoadingSession(false);
-      void refresh();
-      return;
-    }
+    if (!client) return;
     let active = true;
     const initialize = async () => {
       try {
@@ -111,7 +107,7 @@ export function CloudWorkspace() {
       active = false;
       subscription.data.subscription.unsubscribe();
     };
-  }, [client, refresh]);
+  }, [client]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
