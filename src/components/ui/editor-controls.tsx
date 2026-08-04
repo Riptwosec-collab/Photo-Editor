@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { ChevronDown, RotateCcw } from "lucide-react";
 import { DEFAULT_ADJUSTMENTS } from "@/features/editor/defaults";
 import { useEditorStore } from "@/features/editor/store";
@@ -29,18 +29,16 @@ export function AccordionSection({
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => {
-    if (forceOpen) setOpen(true);
-  }, [forceOpen]);
+  const expanded = Boolean(forceOpen || open);
   return (
-    <section className={cn("inspector-section", open && "open")} data-section={id}>
+    <section className={cn("inspector-section", expanded && "open")} data-section={id}>
       <div className="inspector-section-head">
         <button
           type="button"
           className="inspector-section-toggle"
-          aria-expanded={open}
+          aria-expanded={expanded}
           aria-controls={`${id}-content`}
-          onClick={() => setOpen((value) => !value)}
+          onClick={() => setOpen((value) => forceOpen ? false : !value)}
         >
           <span className="inspector-section-icon">{icon}</span>
           <span className="inspector-section-copy">
@@ -52,7 +50,7 @@ export function AccordionSection({
         </button>
         {actions && <div className="inspector-section-actions">{actions}</div>}
       </div>
-      {open && <div className="inspector-section-content" id={`${id}-content`}>{children}</div>}
+      {expanded && <div className="inspector-section-content" id={`${id}-content`}>{children}</div>}
     </section>
   );
 }
