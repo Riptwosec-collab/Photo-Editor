@@ -32,6 +32,7 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   const assistantCollapsed = useStudioStore((state) => state.assistantCollapsed);
   const inspectorCollapsed = useStudioStore((state) => state.inspectorCollapsed);
   const filmstripCollapsed = useStudioStore((state) => state.filmstripCollapsed);
+  const setAssistantCollapsed = useStudioStore((state) => state.setAssistantCollapsed);
   const setFilmstripCollapsed = useStudioStore((state) => state.setFilmstripCollapsed);
   const setInspectorCollapsed = useStudioStore((state) => state.setInspectorCollapsed);
   const setActiveInspectorSection = useStudioStore((state) => state.setActiveInspectorSection);
@@ -52,6 +53,18 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   useEffect(() => () => {
     if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
   }, []);
+
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 680px)");
+    const applyCanvasFirstDefaults = () => {
+      if (!mobile.matches) return;
+      setAssistantCollapsed(true);
+      setInspectorCollapsed(true);
+    };
+    applyCanvasFirstDefaults();
+    mobile.addEventListener("change", applyCanvasFirstDefaults);
+    return () => mobile.removeEventListener("change", applyCanvasFirstDefaults);
+  }, [setAssistantCollapsed, setInspectorCollapsed]);
 
   useEffect(() => {
     if (!initialProjectId) return;
