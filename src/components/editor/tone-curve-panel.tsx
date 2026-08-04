@@ -12,10 +12,11 @@ const points: Array<{ key: AdjustmentKey; x: number; base: number; label: string
 ];
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-export function ToneCurvePanel() {
+export function ToneCurvePanel({ embedded = false }: { embedded?: boolean }) {
   const adjustments = useEditorStore((state) => state.adjustments);
   const preview = useEditorStore((state) => state.previewAdjustment);
   const commit = useEditorStore((state) => state.commitAdjustments);
+  const resetSection = useEditorStore((state) => state.resetSection);
   const active = useRef<AdjustmentKey | null>(null);
 
   const curvePoints = [
@@ -35,26 +36,33 @@ export function ToneCurvePanel() {
   }
 
   function resetCurve() {
-    preview("curveShadows", 0);
-    preview("curveMidtones", 0);
-    preview("curveHighlights", 0);
-    commit();
+    resetSection(points.map((point) => point.key));
   }
 
   return (
-    <div className="panel-scroll">
-      <div className="panel-title">
-        <div><span className="kicker">RGB composite</span><h2>Tone Curve</h2></div>
-        <button className="icon-button" title="Reset curve" onClick={resetCurve}><RotateCcw size={16} /></button>
-      </div>
+    <div className={embedded ? "inline-editor-panel tone-curve-inline" : "panel-scroll"}>
+      {!embedded && (
+        <div className="panel-title">
+          <div><span className="kicker">RGB composite</span><h2>Tone Curve</h2></div>
+          <button className="icon-button" title="Reset curve" onClick={resetCurve}><RotateCcw size={16} /></button>
+        </div>
+      )}
+      {embedded && <div className="inline-panel-actions"><span>RGB composite</span><button className="mini-reset" title="Reset curve" onClick={resetCurve}><RotateCcw size={12} /></button></div>}
       <section className="curve-card">
         <svg
           viewBox="0 0 255 255"
           role="img"
           aria-label="Editable composite tone curve"
           onPointerMove={updateFromPointer}
-          onPointerUp={(event) => { active.current = null; event.currentTarget.releasePointerCapture(event.pointerId); commit(); }}
-          onPointerCancel={() => { active.current = null; commit(); }}
+          onPointerUp={(event) => {
+            active.current = null;
+            if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+            commit();
+          }}
+          onPointerCancel={() => {
+            active.current = null;
+            commit();
+          }}
         >
           {[64, 128, 192].map((line) => <path key={`v-${line}`} d={`M${line},0 V255`} className="curve-grid-line" />)}
           {[64, 128, 192].map((line) => <path key={`h-${line}`} d={`M0,${line} H255`} className="curve-grid-line" />)}
@@ -62,11 +70,23 @@ export function ToneCurvePanel() {
           <path d={path} className="curve-line" />
           {points.map((point) => {
             const y = 255 - clamp(point.base + adjustments[point.key], 0, 255);
-            return <circle key={point.key} cx={point.x} cy={y} r="8" className="curve-point" onPointerDown={(event) => { active.current = point.key; event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId); }} />;
+            return (
+              <circle
+                key={point.key}
+                cx={point.x}
+                cy={y}
+                r="8"
+                className="curve-point"
+                onPointerDown={(event) => {
+                  active.current = point.key;
+                  event.currentTarget.ownerSVGElement?.setPointerCapture(event.pointerId);
+                }}
+              />
+            );
           })}
         </svg>
       </section>
-      <section className="control-group">
+      <section className="curve-sliders">
         {points.map((point) => (
           <label className="slider-row" key={point.key}>
             <span><b>{point.label}</b><output>{adjustments[point.key] > 0 ? "+" : ""}{adjustments[point.key]}</output></span>
@@ -74,7 +94,7 @@ export function ToneCurvePanel() {
           </label>
         ))}
       </section>
-      <p className="control-note">Drag the three curve points vertically. Endpoints remain locked to protect black and white clipping.</p>
+      <p className="control-note">Drag the three points vertically. Endpoints remain locked to protect black and white clipping.</p>
     </div>
   );
 }
