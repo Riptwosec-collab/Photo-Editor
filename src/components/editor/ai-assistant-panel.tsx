@@ -61,7 +61,6 @@ const builtInSuggestions: Array<{
 export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => void }) {
   const image = useEditorStore((state) => state.image);
   const adjustments = useEditorStore((state) => state.adjustments);
-  const geometry = useEditorStore((state) => state.geometry);
   const apply = useEditorStore((state) => state.applyAdjustments);
   const preview = useEditorStore((state) => state.previewAdjustment);
   const commit = useEditorStore((state) => state.commitAdjustments);
