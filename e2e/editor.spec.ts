@@ -35,7 +35,7 @@ test("landing opens canonical functional editor", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: /เริ่มแต่งภาพ/ }).click();
   await expect(page.getByText(/ลากภาพมาวาง/)).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+  await expect(page.locator("nav.desktop-navigation")).toBeVisible();
 });
 
 test("professional editor import compare project version and export flow", async ({ page }) => {
@@ -59,8 +59,8 @@ test("professional editor import compare project version and export flow", async
 
   await page.getByRole("button", { name: "Save project" }).click();
   await expect(page.locator(".professional-toast")).toContainText(/Project saved locally/);
-  await page.getByRole("button", { name: "Version history" }).click();
-  await page.getByRole("button", { name: /Create snapshot/ }).click();
+  await page.locator(".professional-topbar").getByRole("button", { name: "Version history" }).click();
+  await page.locator("#versions-content").getByRole("button", { name: /Create snapshot/ }).click();
   await expect(page.locator(".version-status")).toContainText(/Snapshot created/);
 
   await page.goto("/projects");
@@ -83,8 +83,8 @@ test("AI Auto Enhance and personal preset remain one unified recipe system", asy
   });
   await expectCanvasOrReport(page);
   await page.getByRole("button", { name: /AI Auto Enhance/ }).click();
-  await page.getByRole("button", { name: "Cinematic" }).click();
-  await expect(page.getByRole("slider", { name: "Contrast" })).not.toHaveValue("0");
+  await page.locator("#auto-enhance-content").getByRole("button", { name: "Cinematic", exact: true }).click();
+  await expect(page.locator("#light-content").getByRole("slider", { name: "Contrast" })).not.toHaveValue("0");
 
   page.once("dialog", async (dialog) => dialog.accept("E2E Look"));
   await page.getByRole("button", { name: /Save current/ }).click();
