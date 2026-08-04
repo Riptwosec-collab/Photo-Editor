@@ -1,0 +1,49 @@
+name: Cloud CI
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/cloud/**"
+      - "src/components/cloud/**"
+      - "src/app/cloud/**"
+      - "src/app/cloud-workspace.css"
+      - "supabase/migrations/**"
+      - "tests/cloud-sync.test.ts"
+      - "e2e/cloud.spec.ts"
+      - ".github/workflows/cloud-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "src/lib/cloud/**"
+      - "src/components/cloud/**"
+      - "src/app/cloud/**"
+      - "src/app/cloud-workspace.css"
+      - "supabase/migrations/**"
+      - "tests/cloud-sync.test.ts"
+      - "e2e/cloud.spec.ts"
+      - ".github/workflows/cloud-ci.yml"
+
+jobs:
+  cloud-fallback-e2e:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- e2e/cloud.spec.ts --project=chromium
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-playwright-diagnostics
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 7
