@@ -12,7 +12,7 @@ import {
   ScanLine,
   SquareDashed,
 } from "lucide-react";
-import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
+import { DEFAULT_ADJUSTMENTS } from "@/features/editor/defaults";
 import { renderToCanvas } from "@/features/editor/image-processing";
 import { useEditorStore } from "@/features/editor/store";
 import { useStudioStore } from "@/features/studio/store";
@@ -77,8 +77,22 @@ export function CanvasStage() {
       requestAnimationFrame(() => {
         if (cancelled) return;
         try {
-          renderToCanvas(source, source.naturalWidth, source.naturalHeight, editedRef.current!, adjustments, geometry);
-          renderToCanvas(source, source.naturalWidth, source.naturalHeight, originalRef.current!, DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY);
+          renderToCanvas(
+            source,
+            source.naturalWidth,
+            source.naturalHeight,
+            editedRef.current!,
+            adjustments,
+            geometry,
+          );
+          renderToCanvas(
+            source,
+            source.naturalWidth,
+            source.naturalHeight,
+            originalRef.current!,
+            DEFAULT_ADJUSTMENTS,
+            geometry,
+          );
           for (const [index, canvas] of gridRefs.current.entries()) {
             if (!canvas) continue;
             renderToCanvas(
@@ -87,7 +101,7 @@ export function CanvasStage() {
               source.naturalHeight,
               canvas,
               index % 2 === 0 ? DEFAULT_ADJUSTMENTS : adjustments,
-              index % 2 === 0 ? DEFAULT_GEOMETRY : geometry,
+              geometry,
               900,
             );
           }
@@ -104,14 +118,6 @@ export function CanvasStage() {
   }, [adjustments, geometry, image]);
 
   if (!image) return null;
-
-  function updateCompare(event: React.PointerEvent<HTMLDivElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const next = compareMode === "horizontal"
-      ? ((event.clientY - rect.top) / rect.height) * 100
-      : ((event.clientX - rect.left) / rect.width) * 100;
-    setComparePosition(next);
-  }
 
   const editedClip = compareMode === "vertical"
     ? { clipPath: `inset(0 0 0 ${comparePosition}%)` }
