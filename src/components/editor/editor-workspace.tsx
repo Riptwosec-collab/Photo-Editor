@@ -94,7 +94,10 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
     if (!image || image.name === lastImportedName.current) return;
     lastImportedName.current = image.name;
     if (!initialProjectId && projectName === "Untitled edit") {
-      setProjectName(image.name.replace(/\.[^.]+$/, "") || "Untitled edit");
+      const timer = window.setTimeout(() => {
+        setProjectName(image.name.replace(/\.[^.]+$/, "") || "Untitled edit");
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [image, initialProjectId, projectName]);
 
@@ -137,7 +140,6 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
 
   useEffect(() => {
     if (!image || !currentProjectId || loadingProject) return;
-    setSyncState("local");
     const timer = window.setTimeout(() => void persistProject(true), 1400);
     return () => window.clearTimeout(timer);
   }, [adjustments, currentProjectId, geometry, image, loadingProject, persistProject, projectName]);
