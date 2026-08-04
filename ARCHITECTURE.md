@@ -1,50 +1,74 @@
 # Architecture — LumaForge AI Studio
 
-## Runtime architecture
+## Application Shell
 
-- Next.js 16 App Router and React 19.
-- Strict TypeScript.
-- Zustand editor domain: image reference, adjustment recipe, geometry, viewport, history and active preset.
-- Canvas 2D shared renderer used by preview, histogram sampling, batch and export.
-- Local rule-based AI provider behind a validated route; provider is marked DEMO.
-- IndexedDB v3 stores projects, image blobs, snapshots, export history and personal presets.
-- LocalStorage stores bounded editor history/draft recipe.
-- Optional Supabase browser client remains inactive without environment variables.
+- `AppShell` owns the canonical grouped navigation and responsive mobile navigation.
+- `EditorWorkspace` owns the five-region editor grid and autosave orchestration.
+- `AiAssistantPanel`, `CanvasStage`, `ProInspector` and `Filmstrip` are independent regions with shared domain state.
+- Tablet and mobile presentation changes through CSS rails/drawers/bottom sheets; functionality is not duplicated.
 
-## Processing order
+## State Domains
 
-1. Decode supported browser image.
-2. Apply non-destructive crop/rotation/flip transform.
-3. Apply exposure and tonal controls.
-4. Apply composite tone-curve LUT.
-5. Apply global color and HSL mixer.
-6. Apply clarity, grain, denoise and sharpening.
-7. Apply vignette.
-8. Draw preview or encode export.
+### Editor Store
 
-This ordering is shared to reduce preview/export divergence.
+Single source of truth for:
 
-## Persistence domains
+- imported image reference
+- adjustment recipe
+- geometry
+- viewport
+- comparison preview state
+- undo/redo history
+- current project and preset
 
-- `projects`: image Blob, dimensions, recipe, geometry and lifecycle metadata.
-- `versions`: named recipe/geometry snapshots linked to a project.
-- `exports`: successful format/settings/output records.
-- `presets`: user recipe definitions and scope.
+Manual sliders, presets, AI suggestions, AI Director, Auto Enhance, reference matching and color consistency all write to this store.
 
-Deleting a project also removes its versions and export history. Personal presets remain independent.
+### Studio Store
 
-## API/security boundary
+UI/workflow state for:
 
-- `POST /api/ai/plan` validates prompt length through Zod.
-- Upload type/size/decode are validated client-side; server upload does not yet exist.
-- Security headers are configured.
-- Supabase SQL includes owner fields/indexes/RLS but remains unapplied.
+- collapsible panels
+- compare mode and position
+- canvas overlays
+- AI Auto Enhance mode/intensity
+- selective targets and protection locks
+- AI workflow progress/status
+- active inspector section
 
-## Required evolution
+## Processing Pipeline
 
-- Move pixel work to Web Worker/OffscreenCanvas and add tiled smart previews.
-- Add free crop/perspective data model.
-- Add masks, layers and local-adjustment compositing.
-- Add real AI provider interface, job state machine, audit log, rate limiting and fallback.
-- Add Supabase Auth/Storage/Realtime with tested RLS.
-- Add durable offline sync and conflict resolution.
+1. Decode browser-supported image.
+2. Calculate fixed or free crop.
+3. Apply rotation, straighten, flip and perspective shear.
+4. Apply exposure, recovery and dynamic-range controls.
+5. Apply composite tone-curve LUT.
+6. Apply white balance, global color and HSL mixer.
+7. Apply shadow/midtone/highlight color grading.
+8. Apply texture, clarity, dehaze, denoise and sharpening.
+9. Apply grain and vignette.
+10. Present preview or encode through the existing Export Center.
+
+Original and edited comparison canvases use identical geometry. Preview, histogram, batch and export reuse the shared renderer.
+
+## Persistence
+
+- IndexedDB `projects`: original image Blob, recipe, geometry and lifecycle metadata.
+- IndexedDB `versions`: snapshot/branch recipes linked to a project.
+- IndexedDB `exports`: successful export history.
+- IndexedDB `presets`: personal adjustment recipes.
+- LocalStorage: panel preferences, copied settings and filmstrip ratings/labels/favorites/rejects.
+
+## AI Boundary
+
+- `/api/ai/plan` validates prompts and returns a local rule-based plan.
+- Suggestion, Director and Auto Enhance recipes are deterministic and undoable.
+- Reverse Preset and Color Consistency sample actual pixels locally at 64×64.
+- Trained vision, segmentation, generation and identity models remain outside the current implementation and are labeled accordingly.
+
+## Required Evolution
+
+- Apply and test Supabase Auth, private Storage and owner RLS.
+- Add Web Worker/OffscreenCanvas and tiled smart previews.
+- Add projective perspective, masks and layer compositing.
+- Add durable AI jobs, provider abstraction, audit logs, rate limits and credits.
+- Add cloud conflict resolution, collaboration, marketplace entitlements and release monitoring.

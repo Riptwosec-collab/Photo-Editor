@@ -1,38 +1,44 @@
 # Feature Matrix — LumaForge AI Studio
 
-Last updated: 2026-08-03 18:45 (Asia/Bangkok)
+Last updated: 2026-08-04 17:35 (Asia/Bangkok)
 
-| Feature | UI | Frontend Logic | Backend | Database | AI Integration | Responsive | Tested | Status | Notes |
-|---|---|---|---|---|---|---|---|---|---|
-| Foundation and shell | Yes | Yes | API route | Migration draft | Demo abstraction | Yes | Build/unit | TESTED | Production build passes |
-| Guest authentication | Yes | Yes | Optional Supabase | Local session | N/A | Yes | Build | PARTIAL | Cloud auth unconfigured |
-| Project CRUD | Yes | Yes | No cloud | IndexedDB | N/A | Yes | E2E pending | FUNCTIONAL | Save/open/rename/duplicate/archive/delete |
-| JPG/PNG/WebP import | Yes | Yes | No | Project Blob | No | Yes | E2E pending | FUNCTIONAL | Picker/drop/clipboard/camera |
-| RAW/HEIC/TIFF import | No | No | No | No | No | No | No | NOT STARTED | Decoder required |
-| Canvas preview | Yes | Yes | No | Recipe | No | Yes | Unit/build | FUNCTIONAL | Shared with export pipeline |
-| Zoom/pan/compare | Yes | Yes | No | View state | No | Yes | E2E pending | FUNCTIONAL | Pointer/wheel/original hold |
-| Manual light/color | Yes | Yes | No | Recipe | No | Yes | Core/unit | FUNCTIONAL | Real pixel changes |
-| Sharpness/denoise | Yes | Yes | No | Recipe | No | Yes | Unit | FUNCTIONAL | Bounded spatial kernels |
-| Histogram | Yes | Yes | No | No | No | Yes | Build | FUNCTIONAL | Live RGB histogram |
-| Composite tone curve | Yes | Yes | No | Recipe | No | Yes | Unit | FUNCTIONAL | Editable 3-point LUT |
-| HSL mixer | Yes | Yes | No | Recipe | No | Yes | Unit | FUNCTIONAL | 8 color ranges, H/S/L |
-| Crop/rotate/flip | Yes | Yes | No | Recipe | No | Yes | Unit | FUNCTIONAL | Reversible centered crop |
-| Free crop/perspective | No | No | No | No | No | No | No | NOT STARTED | Planned |
-| Undo/redo | Yes | Yes | No | LocalStorage | No | Yes | E2E pending | FUNCTIONAL | Bounded history |
-| Snapshots | Yes | Yes | No | IndexedDB | No | Yes | E2E pending | FUNCTIONAL | Create/restore/rename/delete |
-| Layers/masks | Status only | No | No | No | No | N/A | No | NOT STARTED | No fake layer processing |
-| Built-in presets | Yes | Yes | No | Recipe | No | Yes | Unit | FUNCTIONAL | Five looks |
-| Personal presets | Yes | Yes | No | IndexedDB | No | Yes | E2E pending | FUNCTIONAL | Save/search/CRUD/JSON import-export |
-| AI prompt plan | Yes | Yes | Zod route | No | Local rules | Yes | Unit | MOCK | Explicitly DEMO, no CV claim |
-| Real AI scene analysis | Status only | No | No | No | No | Yes | No | NOT STARTED | Provider required |
-| Batch processing | Yes | Yes | No | No | No | Yes | Build | PARTIAL | Real queue/export; no culling intelligence |
-| Gallery | Yes | Yes | No | IndexedDB | No | Yes | E2E pending | FUNCTIONAL | Local asset management |
-| Community/marketplace | Status only | No | No | No | No | Yes | No | NOT STARTED | No fake social/payment states |
-| Export JPEG/PNG/WebP | Yes | Yes | No | Export history | No | Yes | E2E pending | FUNCTIONAL | Quality/resize/crop override |
-| Instagram export preset | Yes | Yes | No | History | No | Yes | E2E pending | FUNCTIONAL | JPG, sRGB, 4:5, 1350 px |
-| Metadata/watermark | Disclosure only | No | No | No | No | Yes | No | NOT STARTED | Explicitly labeled |
-| PWA shell | Yes | Partial | Service worker | Cache | N/A | Yes | Build | PARTIAL | Offline sync incomplete |
-| Supabase RLS | N/A | Client optional | SQL exists | Not applied | N/A | N/A | Not run | READY | Requires target project |
-| Unit tests | N/A | Yes | API rules | No DB | Demo provider | N/A | 7/7 PASS | TESTED | Core logic |
-| Browser E2E | N/A | Defined | Local dev | IndexedDB | Demo route | Chromium | Pending PR | TESTING | Release gate added |
-| Vercel deployment | N/A | N/A | Ready | N/A | N/A | N/A | Build PASS | FUNCTIONAL | Protected deployment |
+| Feature | UI | Logic | Persistence/API | Responsive | Validation | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| Canonical navigation | Yes | Yes | Route redirects | Yes | Build + desktop/mobile E2E | TESTED | One canonical destination per product area |
+| Five-region editor shell | Yes | Yes | UI state persisted | Yes | Desktop/mobile E2E | TESTED | Toolbar, assistant, canvas, inspector, filmstrip |
+| Sidebar collapse | Yes | Yes | Zustand | Desktop/tablet | Build | FUNCTIONAL | Icon tooltips via titles |
+| Top toolbar | Yes | Yes | Local save/share/export entry | Yes | Desktop E2E | TESTED | Project title, undo/redo, versions, compare, preview, share, export |
+| AI Assistant | Yes | Yes | `/api/ai/plan` | Drawer on mobile | Build | FUNCTIONAL DEMO | Local rule-based planning; no vision claim |
+| Scene Understanding | Yes | Heuristic | Local file/state | Yes | Build | PARTIAL | File/orientation/state analysis only |
+| AI suggestions | Yes | Yes | Shared editor history | Yes | Unit/build | FUNCTIONAL DEMO | Strength, preview, individual/apply-selected |
+| AI Director | Yes | Yes | Shared recipe | Yes | Build | FUNCTIONAL DEMO | Analyze/Plan/Edit, progress/cancel/retry |
+| AI Auto Enhance | Yes | Yes | Shared recipe + presets | Yes | Desktop E2E | TESTED LOCAL | Nine modes, intensity, selective targets, locks |
+| Reverse Preset | Yes | Yes | IndexedDB + downloads | Yes | Unit/build | FUNCTIONAL LOCAL | Internal/XMP/LUT/JSON; DNG disabled truthfully |
+| Color Consistency | Yes | Yes | Current + album IndexedDB | Yes | Unit/build | FUNCTIONAL LOCAL | Local average-color/luminance matching |
+| Before/After | Yes | Yes | Shared geometry/state | Yes | Desktop/mobile E2E | TESTED | Vertical, horizontal, blink, four-grid |
+| Canvas navigation | Yes | Yes | View state | Yes | E2E | TESTED | Zoom, wheel, pan, fit, 100%, fullscreen |
+| Canvas overlays | Yes | Yes | UI state | Yes | Build | FUNCTIONAL | Grid, guides, safe zones, clipping, mask preview |
+| RGB/luminance histogram | Yes | Yes | Shared renderer | Yes | Build | FUNCTIONAL | Live clipping percentages and metadata |
+| Manual Light controls | Yes | Yes | Shared recipe/history | Yes | Unit + E2E | TESTED | 12 controls, direct numeric entry and reset |
+| HSL mixer | Yes | Yes | Shared recipe | Yes | Unit | TESTED | Eight color ranges |
+| Tone Curve | Yes | Yes | Shared recipe | Yes | Unit/build | FUNCTIONAL | Composite RGB curve; channel curves pending |
+| Color Grading | Yes | Yes | Shared recipe | Yes | Unit/build | FUNCTIONAL | Shadow/midtone/highlight hue and saturation |
+| Detail/Effects | Yes | Yes | Shared renderer | Yes | Unit | TESTED | Texture, clarity, dehaze, sharpening, denoise, grain, vignette |
+| Geometry | Yes | Yes | Shared recipe/history | Yes | Unit | PARTIAL | Free crop, ratios, rotate, flip, straighten, shear perspective |
+| Lens profiles | Disabled state | No | None | Yes | Build | NOT STARTED | Disabled rather than reporting fake correction |
+| Masking | Overlay/tools | Partial | UI state | Yes | Build | PARTIAL | Overlay works; local adjustment compositing pending |
+| Layers | Status only | No | None | N/A | No | NOT STARTED | One shared history remains canonical |
+| Filmstrip | Yes | Yes | IndexedDB/localStorage | Yes | Mobile/desktop build | FUNCTIONAL | Multi-select, rating, labels, favorite, reject, sync edits |
+| Project autosave | Yes | Yes | IndexedDB | Yes | Desktop E2E | TESTED | Image and recipe persist locally |
+| Version history | Yes | Yes | IndexedDB | Yes | Desktop E2E | TESTED | Snapshot, duplicate, branch, restore, rename, delete |
+| Personal presets | Yes | Yes | IndexedDB/JSON | Yes | Desktop E2E | TESTED | Existing canonical preset system preserved |
+| Batch editing | Yes | Yes | Local queue | Yes | Build | PARTIAL | Real render queue; AI culling/durable pause pending |
+| Gallery/projects | Yes | Yes | IndexedDB | Yes | Desktop E2E | TESTED LOCAL | Distinct responsibilities retained |
+| Export Center | Yes | Yes | Export history | Yes | Desktop E2E | TESTED | JPEG/PNG/WebP, quality, resize, crop, social preset |
+| Cloud | Status/state | No production sync | Supabase draft | Yes | Not run | BLOCKED | Restore/migration/RLS/Storage pending |
+| Authentication | Yes | Partial | Optional Supabase | Yes | Build | PARTIAL | Guest/local works; production account lifecycle pending |
+| Beauty Studio | Canonical status | Global portrait mode | Shared recipe | Yes | Build | PLANNED | Segmentation and per-person controls pending |
+| Marketplace | Canonical status | No checkout | None | Yes | Build | NOT STARTED | No fake catalog/payment states |
+| Collaboration | Share entry | Partial | Browser share only | Yes | Build | NOT STARTED | Project roles/comments/review links pending |
+| Desktop release gate | N/A | N/A | CI | Desktop | 3/3 PASS | TESTED | Import, compare, edit, undo, save, versions, export, presets |
+| Mobile release gate | N/A | N/A | CI | Pixel 7 | PASS | TESTED | Canvas-first, bottom nav, inspector and AI drawers |

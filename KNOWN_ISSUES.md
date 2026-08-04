@@ -1,71 +1,78 @@
 # Known Issues
 
-## ISSUE-0001 — Browser E2E result pending
-Severity: High
-Affected module: QA/release
-Description: Chromium workflow is defined but has not yet produced a passing PR result.
-Status: TESTING
-Assigned phase: 29
-
-## ISSUE-0002 — Supabase migration unapplied
+## ISSUE-0001 — Supabase cloud foundation incomplete
 Severity: Critical
-Affected module: Authentication/cloud projects/security
-Description: Core schema and owner RLS exist in SQL but no target project is configured or permission-tested.
-Status: READY
-Assigned phase: 3/27
+Affected modules: Authentication, Cloud, Projects, Gallery, Security
+Description: Supabase restoration, schema application, private Storage and owner-isolation RLS tests are incomplete.
+Status: BLOCKED
+Assigned phase: 3/4/27
 
-## ISSUE-0003 — Real AI provider unavailable
+## ISSUE-0002 — Real AI providers unavailable
 Severity: High
-Affected module: AI infrastructure
-Description: Current prompt planner is a clearly labeled local rule-based demo and does not inspect image pixels.
-Status: MOCK
-Assigned phase: 13
+Affected modules: AI Assistant, AI Director, Beauty, Generative
+Description: Current planning, suggestions and reference matching are local deterministic workflows. They do not perform trained scene segmentation, identity analysis or generation.
+Status: PARTIAL / DEMO
+Assigned phase: 13–19
 
-## ISSUE-0004 — Crop is centered only
+## ISSUE-0003 — Masks and layers incomplete
+Severity: High
+Affected modules: Masking, selective editing, history
+Description: Mask tool selection and overlay preview work, but local per-pixel adjustment compositing, layers, blend modes and opacity are incomplete.
+Status: PARTIAL
+Assigned phase: 10–11
+
+## ISSUE-0004 — Advanced media formats unsupported
+Severity: High
+Affected module: Import/export
+Description: RAW, HEIC/HEIF, TIFF, PSD and DNG encoding require native/WASM decoders or a server pipeline.
+Status: NOT STARTED
+Assigned phase: 5/25
+
+## ISSUE-0005 — Lens correction unavailable
 Severity: Medium
-Affected module: Crop/geometry
-Description: Fixed aspect ratios, rotate and flip work; free handles, straighten and perspective do not.
+Affected module: Lens
+Description: Camera/lens profile correction and chromatic aberration shaders are not implemented; controls remain disabled.
+Status: NOT STARTED
+Assigned phase: 7/28
+
+## ISSUE-0006 — Perspective is an approximation
+Severity: Medium
+Affected module: Geometry
+Description: Perspective uses reversible Canvas shear, not a full four-corner projective transform.
 Status: PARTIAL
 Assigned phase: 9
 
-## ISSUE-0005 — No masks or layers
+## ISSUE-0007 — Large-image processing remains on main thread
 Severity: High
-Affected module: Local editing
-Description: Professional masks, adjustment layers, blend modes and layer compositing are not implemented.
-Status: NOT STARTED
-Assigned phase: 10–11
-
-## ISSUE-0006 — Browser color/metadata limitations
-Severity: Medium
-Affected module: Export
-Description: Export is operationally sRGB but does not embed selectable ICC profiles or preserve EXIF; watermark is absent.
-Status: PARTIAL
-Assigned phase: 25
-
-## ISSUE-0007 — Local-only persistence
-Severity: High
-Affected module: Projects/gallery/presets
-Description: IndexedDB persistence works per browser/device; cloud sync, conflict resolution and backup are absent.
-Status: PARTIAL
-Assigned phase: 4/26
-
-## ISSUE-0008 — Large-image performance not profiled
-Severity: High
-Affected module: Editor performance
-Description: Preview size is bounded, but image processing still runs on the main thread without workers/tiles.
+Affected module: Performance
+Description: Preview dimensions are bounded, but Web Worker, OffscreenCanvas and tiled smart previews are not implemented.
 Status: PLANNED
 Assigned phase: 28
 
-## ISSUE-0009 — Advanced formats missing
-Severity: Medium
-Affected module: Import
-Description: RAW, HEIC/HEIF, TIFF, PSD and ZIP albums are unsupported.
+## ISSUE-0008 — Marketplace and collaboration absent
+Severity: High
+Affected modules: Marketplace, Projects, Share
+Description: Catalog, payments, entitlements, project roles, comments, approval links and moderation are not implemented.
 Status: NOT STARTED
-Assigned phase: 5
+Assigned phase: 23–24
 
-## ISSUE-0010 — Batch pause semantics limited
-Severity: Low
-Affected module: Batch
-Description: Stop-after-current works; durable pause/resume across reload and per-image overrides are absent.
-Status: PARTIAL
-Assigned phase: 20
+## ISSUE-0009 — Vercel production deployment blocked
+Severity: High
+Affected module: Release
+Description: Vercel rejected new production builds due to the current build-rate limit. Prior deployments are READY, but PR #2 is not deployed to production.
+Status: BLOCKED
+Assigned phase: 30
+
+## ISSUE-0010 — Dependency advisories
+Severity: High
+Affected module: Supply-chain security
+Description: `npm install` reports three high-severity advisories. A forced upgrade was not applied because it may introduce breaking changes; dependency-level remediation is required.
+Status: OPEN
+Assigned phase: 27
+
+## ISSUE-0011 — Full accessibility and performance audits pending
+Severity: Medium
+Affected modules: Design system, mobile, performance
+Description: Keyboard states and mobile flows are tested, but automated WCAG audit, screen-reader review and performance profiling are not complete.
+Status: PLANNED
+Assigned phase: 27–29
