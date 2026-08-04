@@ -84,7 +84,9 @@ test("AI Auto Enhance and personal preset remain one unified recipe system", asy
   await expectCanvasOrReport(page);
   await page.getByRole("button", { name: /AI Auto Enhance/ }).click();
   await page.locator("#auto-enhance-content").getByRole("button", { name: "Cinematic", exact: true }).click();
-  await expect(page.locator("#light-content").getByRole("slider", { name: "Contrast" })).not.toHaveValue("0");
+  await expect(
+    page.locator("#light-content").getByRole("slider", { name: "Contrast", exact: true }),
+  ).not.toHaveValue("0");
 
   page.once("dialog", async (dialog) => dialog.accept("E2E Look"));
   await page.getByRole("button", { name: /Save current/ }).click();
