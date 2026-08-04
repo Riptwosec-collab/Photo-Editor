@@ -23,7 +23,9 @@ import { cn } from "@/lib/cn";
 
 const colorOptions = ["none", "red", "orange", "yellow", "green", "blue", "purple"] as const;
 type ColorLabel = (typeof colorOptions)[number];
-type FilmstripMeta = Record<string, { rating: number; color: ColorLabel; favorite: boolean; rejected: boolean }>;
+type FilmstripEntryMeta = { rating: number; color: ColorLabel; favorite: boolean; rejected: boolean };
+type FilmstripMeta = Record<string, FilmstripEntryMeta>;
+const DEFAULT_META: FilmstripEntryMeta = { rating: 0, color: "none", favorite: false, rejected: false };
 
 type FilmstripItem = {
   id: string;
@@ -136,18 +138,17 @@ export function Filmstrip({ onNotice }: { onNotice: (message: string) => void })
     setAnchor(id);
   }
 
-  function updateSelectedMeta(values: Partial<FilmstripMeta[string]>) {
+  function updateSelectedMeta(values: Partial<FilmstripEntryMeta>) {
     if (!selected.length) return;
     setMeta((state) => {
       const next = { ...state };
       for (const id of selected) {
+        const current = next[id] ?? DEFAULT_META;
         next[id] = {
-          rating: 0,
-          color: "none",
-          favorite: false,
-          rejected: false,
-          ...next[id],
-          ...values,
+          rating: values.rating ?? current.rating,
+          color: values.color ?? current.color,
+          favorite: values.favorite ?? current.favorite,
+          rejected: values.rejected ?? current.rejected,
         };
       }
       return next;
@@ -242,7 +243,7 @@ export function Filmstrip({ onNotice }: { onNotice: (message: string) => void })
           if (event.key === "ArrowLeft") setSelected([ids[Math.max(0, current - 1)]].filter(Boolean));
         }}>
           {items.map((item, index) => {
-            const itemMeta = meta[item.id] ?? { rating: 0, color: "none", favorite: false, rejected: false };
+            const itemMeta = meta[item.id] ?? DEFAULT_META;
             return (
               <button
                 key={`${item.id}-${index}`}
