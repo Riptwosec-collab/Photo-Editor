@@ -1,35 +1,67 @@
 # Project Audit — LumaForge AI Studio
 
-Audit date: 2026-08-03
-Evidence: Current GitHub source, Vercel build logs and core test output
+Audit date: 2026-08-04
+Evidence: GitHub source on PR #2, GitHub Actions logs, 10 unit tests, desktop Chromium E2E and Pixel 7 mobile E2E.
 
 ## Stack
-- Next.js 16.1.1, React 19.2.3, strict TypeScript, Tailwind CSS 4
-- Zustand, TanStack Query, Canvas 2D
-- IndexedDB v3: projects, versions, exports, presets
-- Optional Supabase client and unapplied SQL/RLS migration
-- Zod API validation, Playwright and Node tests
 
-## Routes
-`/`, `/editor`, `/auth`, `/projects`, `/gallery`, `/batch`, `/presets`, `/export-center`, `/api/ai/plan` plus truthful status routes.
+- Next.js 16.1.1 and React 19.2.3.
+- Strict TypeScript and ESLint with zero warnings.
+- Zustand editor and studio UI domains.
+- Canvas 2D shared image renderer.
+- IndexedDB v3 for projects, snapshots, export records and personal presets.
+- LocalStorage for bounded UI preferences, filmstrip metadata and copied settings.
+- Zod-validated local AI planning route.
+- Playwright desktop and mobile release gates.
 
-## Functional findings
-- JPG/PNG/WebP import by picker, drop, clipboard and camera.
-- Preview, histogram, batch and export share the renderer.
-- Light/color, curve, HSL, sharpness, denoise, clarity, grain and vignette alter pixels.
-- Crop/rotate/flip are non-destructive and undoable.
-- Projects store image blobs and recipes; snapshots restore recipes.
-- Batch progress reflects real processing results.
-- Export history records successful encodes only.
-- Preset JSON accepts known numeric keys only.
+## Canonical Routes
 
-## Partial/missing
-- Centered crop only; no free crop/straighten/perspective.
-- Composite curve only; no RGB channels or grading wheels.
-- PWA shell only; no complete offline sync/conflicts.
-- Supabase unapplied; AI is prompt-rule demo.
-- Masks/layers, RAW, beauty/generative tools, collaboration/marketplace absent.
-- E2E requires passing PR run.
+- `/`
+- `/editor`
+- `/ai-studio`
+- `/beauty-studio`
+- `/presets`
+- `/batch-edit`
+- `/gallery`
+- `/projects`
+- `/marketplace`
+- `/export-center`
+- `/cloud`
+- `/settings`
+- `/auth`
 
-## Recommended task
-Pass E2E, then implement Supabase Auth/Storage/RLS with permission tests.
+Obsolete aliases redirect to their canonical route: `/photo-editor`, `/ai`, `/beauty`, `/batch`, `/exports`, `/looks` and `/library`.
+
+## Functional Findings
+
+- The editor now uses the requested five-region shell.
+- The image canvas remains the center and largest region.
+- Original and edited canvases share identical crop/rotation/perspective geometry.
+- Manual and local AI-assisted operations create one non-destructive recipe and history.
+- AI workflows expose local/demo limitations and do not claim trained vision analysis.
+- Reference matching analyzes actual pixels at a bounded sample resolution.
+- Filmstrip and project sync use the existing IndexedDB project model.
+- Export and Presets remain consolidated instead of being recreated.
+- Tablet/mobile behavior uses rails and bottom sheets instead of shrinking the desktop layout.
+
+## Partial or Missing
+
+- Cloud Auth/Storage/RLS are not production-tested.
+- RAW/HEIC/TIFF and DNG encoding are unavailable.
+- Lens correction profiles are not implemented.
+- Mask overlay is functional but per-pixel local adjustment compositing is incomplete.
+- Layers and blend modes are not implemented.
+- Beauty segmentation, generative editing and trained identity protection are not implemented.
+- Marketplace, payments, entitlements and collaboration roles are not implemented.
+- Web Worker/OffscreenCanvas and tiled large-image rendering remain pending.
+
+## Validation
+
+- Lint: PASS, 0 errors and 0 warnings.
+- Strict TypeScript: PASS.
+- Unit tests: PASS, 10/10.
+- Production build: PASS.
+- Desktop Chromium: PASS, 3/3.
+- Mobile Pixel 7: PASS.
+- Supabase and RLS integration tests: NOT RUN.
+- Production Vercel deployment for PR #2: BLOCKED by build-rate limit.

@@ -34,6 +34,8 @@ type EditorState = {
   undo: () => void;
   redo: () => void;
   reset: () => void;
+  resetAdjustment: (key: AdjustmentKey) => void;
+  resetSection: (keys: AdjustmentKey[]) => void;
   setZoom: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
   toggleOriginal: (value?: boolean) => void;
@@ -41,22 +43,35 @@ type EditorState = {
   toggleFlipX: () => void;
   toggleFlipY: () => void;
   setAspectRatio: (ratio: AspectRatio) => void;
+  setStraighten: (value: number) => void;
+  setCrop: (crop: Partial<Pick<Geometry, "cropX" | "cropY" | "cropWidth" | "cropHeight">>) => void;
+  setPerspective: (x: number, y: number) => void;
   resetGeometry: () => void;
 };
 
-const cloneAdjustments = (value: Adjustments): Adjustments => ({ ...value });
-const cloneGeometry = (value: Geometry): Geometry => ({ ...value });
+const cloneAdjustments = (value: Partial<Adjustments>): Adjustments => ({
+  ...DEFAULT_ADJUSTMENTS,
+  ...value,
+});
+const cloneGeometry = (value: Partial<Geometry>): Geometry => ({
+  ...DEFAULT_GEOMETRY,
+  ...value,
+});
 const cloneSnapshot = (value: EditorSnapshot): EditorSnapshot => ({
   adjustments: cloneAdjustments(value.adjustments),
   geometry: cloneGeometry(value.geometry),
 });
-const makeSnapshot = (adjustments: Adjustments, geometry: Geometry): EditorSnapshot => ({
+const makeSnapshot = (
+  adjustments: Partial<Adjustments>,
+  geometry: Partial<Geometry>,
+): EditorSnapshot => ({
   adjustments: cloneAdjustments(adjustments),
   geometry: cloneGeometry(geometry),
 });
-const sameSnapshot = (a: EditorSnapshot, b: EditorSnapshot) => JSON.stringify(a) === JSON.stringify(b);
-
+const sameSnapshot = (a: EditorSnapshot, b: EditorSnapshot) =>
+  JSON.stringify(a) === JSON.stringify(b);
 const initialSnapshot = makeSnapshot(DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY);
+const clampUnit = (value: number) => Math.max(0, Math.min(1, value));
 
 export const useEditorStore = create<EditorState>()(
   persist(
@@ -68,7 +83,7 @@ export const useEditorStore = create<EditorState>()(
         set({
           geometry: cloneGeometry(nextGeometry),
           committed: next,
-          past: [...state.past, cloneSnapshot(state.committed)].slice(-80),
+          past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
           future: [],
           activePreset: null,
         });
@@ -114,27 +129,30 @@ export const useEditorStore = create<EditorState>()(
           if (sameSnapshot(next, state.committed)) return;
           set({
             committed: next,
-            past: [...state.past, cloneSnapshot(state.committed)].slice(-80),
+            past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
             future: [],
           });
         },
         applyAdjustments: (values, presetId = null) => {
           const state = get();
-          const nextAdjustments = { ...state.adjustments, ...values };
+          const nextAdjustments = cloneAdjustments({ ...state.adjustments, ...values });
           const next = makeSnapshot(nextAdjustments, state.geometry);
+          if (sameSnapshot(next, state.committed)) return;
           set({
             adjustments: nextAdjustments,
             committed: next,
-            past: [...state.past, cloneSnapshot(state.committed)].slice(-80),
+            past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
             future: [],
             activePreset: presetId,
           });
         },
         loadRecipe: (adjustments, geometry) => {
-          const snapshot = makeSnapshot(adjustments, geometry);
+          const normalizedAdjustments = cloneAdjustments(adjustments);
+          const normalizedGeometry = cloneGeometry(geometry);
+          const snapshot = makeSnapshot(normalizedAdjustments, normalizedGeometry);
           set({
-            adjustments: cloneAdjustments(adjustments),
-            geometry: cloneGeometry(geometry),
+            adjustments: normalizedAdjustments,
+            geometry: normalizedGeometry,
             committed: snapshot,
             past: [],
             future: [],
@@ -147,7 +165,7 @@ export const useEditorStore = create<EditorState>()(
             const previous = state.past[state.past.length - 1];
             return {
               past: state.past.slice(0, -1),
-              future: [cloneSnapshot(state.committed), ...state.future].slice(0, 80),
+              future: [cloneSnapshot(state.committed), ...state.future].slice(0, 100),
               adjustments: cloneAdjustments(previous.adjustments),
               geometry: cloneGeometry(previous.geometry),
               committed: cloneSnapshot(previous),
@@ -159,7 +177,7 @@ export const useEditorStore = create<EditorState>()(
             if (!state.future.length) return state;
             const next = state.future[0];
             return {
-              past: [...state.past, cloneSnapshot(state.committed)].slice(-80),
+              past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
               future: state.future.slice(1),
               adjustments: cloneAdjustments(next.adjustments),
               geometry: cloneGeometry(next.geometry),
@@ -169,18 +187,48 @@ export const useEditorStore = create<EditorState>()(
           }),
         reset: () => {
           const state = get();
+          const next = cloneSnapshot(initialSnapshot);
+          if (sameSnapshot(next, state.committed)) return;
           set({
             adjustments: cloneAdjustments(DEFAULT_ADJUSTMENTS),
             geometry: cloneGeometry(DEFAULT_GEOMETRY),
-            committed: cloneSnapshot(initialSnapshot),
-            past: [...state.past, cloneSnapshot(state.committed)].slice(-80),
+            committed: next,
+            past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
             future: [],
             activePreset: null,
           });
         },
-        setZoom: (zoom) => set({ zoom: Math.min(4, Math.max(0.25, zoom)) }),
+        resetAdjustment: (key) => {
+          const state = get();
+          const adjustments = { ...state.adjustments, [key]: DEFAULT_ADJUSTMENTS[key] };
+          const next = makeSnapshot(adjustments, state.geometry);
+          if (sameSnapshot(next, state.committed)) return;
+          set({
+            adjustments,
+            committed: next,
+            past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
+            future: [],
+            activePreset: null,
+          });
+        },
+        resetSection: (keys) => {
+          const state = get();
+          const adjustments = { ...state.adjustments };
+          for (const key of keys) adjustments[key] = DEFAULT_ADJUSTMENTS[key];
+          const next = makeSnapshot(adjustments, state.geometry);
+          if (sameSnapshot(next, state.committed)) return;
+          set({
+            adjustments,
+            committed: next,
+            past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
+            future: [],
+            activePreset: null,
+          });
+        },
+        setZoom: (zoom) => set({ zoom: Math.min(8, Math.max(0.1, zoom)) }),
         setPan: (panX, panY) => set({ panX, panY }),
-        toggleOriginal: (value) => set((state) => ({ showOriginal: value ?? !state.showOriginal })),
+        toggleOriginal: (value) =>
+          set((state) => ({ showOriginal: value ?? !state.showOriginal })),
         rotateClockwise: () => {
           const state = get();
           commitGeometry({
@@ -200,11 +248,41 @@ export const useEditorStore = create<EditorState>()(
           const state = get();
           commitGeometry({ ...state.geometry, aspectRatio });
         },
+        setStraighten: (straighten) => {
+          const state = get();
+          commitGeometry({
+            ...state.geometry,
+            straighten: Math.max(-45, Math.min(45, straighten)),
+          });
+        },
+        setCrop: (crop) => {
+          const state = get();
+          const cropWidth = Math.max(0.1, Math.min(1, crop.cropWidth ?? state.geometry.cropWidth));
+          const cropHeight = Math.max(0.1, Math.min(1, crop.cropHeight ?? state.geometry.cropHeight));
+          const cropX = Math.min(1 - cropWidth, clampUnit(crop.cropX ?? state.geometry.cropX));
+          const cropY = Math.min(1 - cropHeight, clampUnit(crop.cropY ?? state.geometry.cropY));
+          commitGeometry({
+            ...state.geometry,
+            aspectRatio: "free",
+            cropX,
+            cropY,
+            cropWidth,
+            cropHeight,
+          });
+        },
+        setPerspective: (perspectiveX, perspectiveY) => {
+          const state = get();
+          commitGeometry({
+            ...state.geometry,
+            perspectiveX: Math.max(-100, Math.min(100, perspectiveX)),
+            perspectiveY: Math.max(-100, Math.min(100, perspectiveY)),
+          });
+        },
         resetGeometry: () => commitGeometry(cloneGeometry(DEFAULT_GEOMETRY)),
       };
     },
     {
-      name: "lumaforge-editor-v3",
+      name: "lumaforge-editor-v4",
       partialize: (state) => ({
         adjustments: state.committed.adjustments,
         geometry: state.committed.geometry,
@@ -214,6 +292,25 @@ export const useEditorStore = create<EditorState>()(
         activePreset: state.activePreset,
         currentProjectId: state.currentProjectId,
       }),
+      merge: (persisted, current) => {
+        const stored = persisted as Partial<EditorState>;
+        const adjustments = cloneAdjustments(stored.adjustments ?? current.adjustments);
+        const geometry = cloneGeometry(stored.geometry ?? current.geometry);
+        const committed = stored.committed
+          ? makeSnapshot(stored.committed.adjustments, stored.committed.geometry)
+          : makeSnapshot(adjustments, geometry);
+        const normalizeHistory = (items?: EditorSnapshot[]) =>
+          (items ?? []).map((item) => makeSnapshot(item.adjustments, item.geometry)).slice(-100);
+        return {
+          ...current,
+          ...stored,
+          adjustments,
+          geometry,
+          committed,
+          past: normalizeHistory(stored.past),
+          future: normalizeHistory(stored.future),
+        };
+      },
     },
   ),
 );

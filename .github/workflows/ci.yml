@@ -22,7 +22,10 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e -- --project=chromium
+      - name: Desktop Chromium release flow
+        run: npm run test:e2e -- e2e/editor.spec.ts --project=chromium
+      - name: Mobile Pixel release flow
+        run: npm run test:e2e -- e2e/mobile-editor.spec.ts --project=mobile
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

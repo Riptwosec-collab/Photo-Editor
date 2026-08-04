@@ -1,22 +1,24 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Download, Redo2, Save, Undo2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronUp, Film } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { AdjustmentPanel } from "./adjustment-panel";
-import { AiPanel } from "./ai-panel";
+import { AiAssistantPanel } from "./ai-assistant-panel";
 import { CanvasStage } from "./canvas-stage";
-import { GeometryPanel } from "./geometry-panel";
-import { ToneCurvePanel } from "./tone-curve-panel";
-import { VersionPanel } from "./version-panel";
+import { EditorTopToolbar } from "./top-toolbar";
+import { Filmstrip } from "./filmstrip";
 import { ImportZone } from "./import-zone";
 import { PresetStrip } from "./preset-strip";
+import { ProInspector } from "./pro-inspector";
 import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
 import { useEditorStore } from "@/features/editor/store";
-import { renderToCanvas } from "@/features/editor/image-processing";
+import { useStudioStore } from "@/features/studio/store";
 import { getProject, saveProject } from "@/lib/idb";
+import { cn } from "@/lib/cn";
 
 export function EditorWorkspace({ initialProjectId }: { initialProjectId?: string }) {
+  const router = useRouter();
   const image = useEditorStore((state) => state.image);
   const currentProjectId = useEditorStore((state) => state.currentProjectId);
   const adjustments = useEditorStore((state) => state.adjustments);
@@ -26,14 +28,43 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   const loadRecipe = useEditorStore((state) => state.loadRecipe);
   const undo = useEditorStore((state) => state.undo);
   const redo = useEditorStore((state) => state.redo);
-  const past = useEditorStore((state) => state.past);
-  const future = useEditorStore((state) => state.future);
   const toggleOriginal = useEditorStore((state) => state.toggleOriginal);
-  const showOriginal = useEditorStore((state) => state.showOriginal);
-  const [tab, setTab] = useState<"adjust" | "curve" | "geometry" | "versions" | "ai">("adjust");
+  const assistantCollapsed = useStudioStore((state) => state.assistantCollapsed);
+  const inspectorCollapsed = useStudioStore((state) => state.inspectorCollapsed);
+  const filmstripCollapsed = useStudioStore((state) => state.filmstripCollapsed);
+  const setAssistantCollapsed = useStudioStore((state) => state.setAssistantCollapsed);
+  const setFilmstripCollapsed = useStudioStore((state) => state.setFilmstripCollapsed);
+  const setInspectorCollapsed = useStudioStore((state) => state.setInspectorCollapsed);
+  const setActiveInspectorSection = useStudioStore((state) => state.setActiveInspectorSection);
+  const [projectName, setProjectName] = useState("Untitled edit");
   const [notice, setNotice] = useState("");
+  const [syncState, setSyncState] = useState<"local" | "saving" | "saved" | "error">("local");
   const [loadingProject, setLoadingProject] = useState(Boolean(initialProjectId));
   const loadedObjectUrl = useRef<string | null>(null);
+  const lastImportedName = useRef<string | null>(null);
+  const noticeTimer = useRef<number | null>(null);
+
+  const showNotice = useCallback((message: string) => {
+    setNotice(message);
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+    noticeTimer.current = window.setTimeout(() => setNotice(""), 3200);
+  }, []);
+
+  useEffect(() => () => {
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current);
+  }, []);
+
+  useEffect(() => {
+    const mobile = window.matchMedia("(max-width: 680px)");
+    const applyCanvasFirstDefaults = () => {
+      if (!mobile.matches) return;
+      setAssistantCollapsed(true);
+      setInspectorCollapsed(true);
+    };
+    applyCanvasFirstDefaults();
+    mobile.addEventListener("change", applyCanvasFirstDefaults);
+    return () => mobile.removeEventListener("change", applyCanvasFirstDefaults);
+  }, [setAssistantCollapsed, setInspectorCollapsed]);
 
   useEffect(() => {
     if (!initialProjectId) return;
@@ -52,143 +83,162 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           height: project.height,
           objectUrl,
         });
+        setProjectName(project.name);
         setCurrentProjectId(project.id);
         loadRecipe(
           { ...DEFAULT_ADJUSTMENTS, ...project.adjustments },
           { ...DEFAULT_GEOMETRY, ...project.geometry },
         );
-        setNotice(`Opened ${project.name}`);
+        setSyncState("saved");
+        showNotice(`Opened ${project.name}`);
       })
       .catch((error: unknown) => {
-        setNotice(error instanceof Error ? error.message : "Unable to open project");
+        showNotice(error instanceof Error ? error.message : "Unable to open project");
+        setSyncState("error");
       })
       .finally(() => setLoadingProject(false));
     return () => {
       cancelled = true;
       if (loadedObjectUrl.current) URL.revokeObjectURL(loadedObjectUrl.current);
     };
-  }, [initialProjectId, loadRecipe, setCurrentProjectId, setImage]);
+  }, [initialProjectId, loadRecipe, setCurrentProjectId, setImage, showNotice]);
+
+  useEffect(() => {
+    if (!image || image.name === lastImportedName.current) return;
+    lastImportedName.current = image.name;
+    if (!initialProjectId && projectName === "Untitled edit") {
+      const timer = window.setTimeout(() => {
+        setProjectName(image.name.replace(/\.[^.]+$/, "") || "Untitled edit");
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+  }, [image, initialProjectId, projectName]);
+
+  const persistProject = useCallback(
+    async (silent = false) => {
+      if (!image) return null;
+      setSyncState("saving");
+      if (!silent) showNotice("Saving project to this device…");
+      try {
+        const imageBlob = await fetch(image.objectUrl).then((response) => response.blob());
+        const existing = currentProjectId ? await getProject(currentProjectId) : undefined;
+        const now = new Date().toISOString();
+        const id = existing?.id ?? crypto.randomUUID();
+        await saveProject({
+          id,
+          name: projectName.trim() || image.name.replace(/\.[^.]+$/, "") || "Untitled edit",
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now,
+          imageBlob,
+          imageName: image.name,
+          imageType: image.type,
+          width: image.width,
+          height: image.height,
+          adjustments,
+          geometry,
+          archivedAt: existing?.archivedAt,
+        });
+        setCurrentProjectId(id);
+        setSyncState("saved");
+        if (!silent) showNotice("Project saved locally with image and non-destructive recipe");
+        return id;
+      } catch (error) {
+        setSyncState("error");
+        showNotice(error instanceof Error ? error.message : "Project save failed");
+        return null;
+      }
+    },
+    [adjustments, currentProjectId, geometry, image, projectName, setCurrentProjectId, showNotice],
+  );
+
+  useEffect(() => {
+    if (!image || !currentProjectId || loadingProject) return;
+    const timer = window.setTimeout(() => void persistProject(true), 1400);
+    return () => window.clearTimeout(timer);
+  }, [adjustments, currentProjectId, geometry, image, loadingProject, persistProject, projectName]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const editingText = target?.matches("input,textarea,select,[contenteditable=true]");
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo();
         else undo();
       }
-      if (event.key === "\\") toggleOriginal();
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        void persistProject(false);
+      }
+      if (!editingText && event.key === "\\") toggleOriginal();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [redo, toggleOriginal, undo]);
+  }, [persistProject, redo, toggleOriginal, undo]);
 
-  async function persistProject() {
+  async function openExportCenter() {
     if (!image) return;
-    setNotice("Saving project to this device…");
-    try {
-      const imageBlob = await fetch(image.objectUrl).then((response) => response.blob());
-      const existing = currentProjectId ? await getProject(currentProjectId) : undefined;
-      const now = new Date().toISOString();
-      const id = existing?.id ?? crypto.randomUUID();
-      await saveProject({
-        id,
-        name: existing?.name ?? image.name.replace(/\.[^.]+$/, ""),
-        createdAt: existing?.createdAt ?? now,
-        updatedAt: now,
-        imageBlob,
-        imageName: image.name,
-        imageType: image.type,
-        width: image.width,
-        height: image.height,
-        adjustments,
-        geometry,
-        archivedAt: existing?.archivedAt,
-      });
-      setCurrentProjectId(id);
-      setNotice("Project saved locally with image and edit recipe");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Project save failed");
-    }
+    const id = await persistProject(true);
+    if (!id) return;
+    router.push("/export-center");
   }
 
-  async function exportImage(type: "image/png" | "image/jpeg") {
-    if (!image) return;
-    setNotice("Rendering full export…");
-    try {
-      const source = new Image();
-      source.src = image.objectUrl;
-      await source.decode();
-      const canvas = document.createElement("canvas");
-      renderToCanvas(
-        source,
-        source.naturalWidth,
-        source.naturalHeight,
-        canvas,
-        adjustments,
-        geometry,
-        6000,
-      );
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, type, type === "image/jpeg" ? 0.92 : undefined),
-      );
-      if (!blob) throw new Error("Export encoder unavailable");
-      const link = document.createElement("a");
-      const downloadUrl = URL.createObjectURL(blob);
-      link.href = downloadUrl;
-      link.download = `${image.name.replace(/\.[^.]+$/, "")}-lumaforge.${type === "image/png" ? "png" : "jpg"}`;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 2000);
-      setNotice("Export complete");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Export failed");
-    }
+  function openVersions() {
+    setInspectorCollapsed(false);
+    setActiveInspectorSection("versions");
+    showNotice("Version History opened in the unified inspector");
   }
 
   return (
     <AppShell>
-      <header className="editor-topbar">
-        <div>
-          <span className="kicker">{currentProjectId ? "Saved project" : "Local draft"}</span>
-          <strong>{image?.name ?? "Untitled edit"}</strong>
-        </div>
-        <div className="top-actions">
-          <button className="icon-button" onClick={undo} disabled={!past.length} title="Undo"><Undo2 /></button>
-          <button className="icon-button" onClick={redo} disabled={!future.length} title="Redo"><Redo2 /></button>
-          <button
-            className={showOriginal ? "button active" : "button"}
-            onPointerDown={() => toggleOriginal(true)}
-            onPointerUp={() => toggleOriginal(false)}
-            onPointerLeave={() => toggleOriginal(false)}
-          >
-            Hold original
-          </button>
-          <button className="button" disabled={!image} onClick={() => void persistProject()}>
-            <Save size={16} /> Save project
-          </button>
-          <button className="icon-button" disabled={!image} onClick={() => void exportImage("image/png")} title="Export PNG">
-            <Download size={17} />
-          </button>
-          <button className="button primary" disabled={!image} onClick={() => void exportImage("image/jpeg")}>
-            <Download size={16} /> Export JPG
-          </button>
-        </div>
-      </header>
-      {notice && <div className="toast" role="status">{notice}</div>}
-      <div className="editor-grid">
-        <main className="editor-main">
-          {loadingProject ? <div className="import-wrap"><div className="loading-card">Opening saved project…</div></div> : image ? <CanvasStage /> : <ImportZone />}
-          {image && <PresetStrip />}
+      <div
+        className={cn(
+          "professional-editor-shell",
+          assistantCollapsed && "assistant-collapsed",
+          inspectorCollapsed && "inspector-collapsed",
+          filmstripCollapsed && "filmstrip-collapsed",
+        )}
+      >
+        <EditorTopToolbar
+          projectName={projectName}
+          onProjectNameChange={(name) => {
+            setProjectName(name);
+            setSyncState("local");
+          }}
+          syncState={syncState}
+          onSave={() => void persistProject(false)}
+          onExport={() => void openExportCenter()}
+          onOpenVersions={openVersions}
+          onNotice={showNotice}
+        />
+
+        <AiAssistantPanel onNotice={showNotice} />
+
+        <main className="professional-editor-main">
+          {loadingProject ? (
+            <div className="import-wrap"><div className="loading-card">Opening saved project and recipe…</div></div>
+          ) : image ? (
+            <>
+              <CanvasStage />
+              <div className="quick-preset-dock"><PresetStrip /></div>
+            </>
+          ) : (
+            <ImportZone />
+          )}
         </main>
-        <aside className="right-panel">
-          <div className="panel-tabs five-tabs">
-            <button className={tab === "adjust" ? "active" : ""} onClick={() => setTab("adjust")}>Adjust</button>
-            <button className={tab === "curve" ? "active" : ""} onClick={() => setTab("curve")}>Curve</button>
-            <button className={tab === "geometry" ? "active" : ""} onClick={() => setTab("geometry")}>Crop</button>
-            <button className={tab === "versions" ? "active" : ""} onClick={() => setTab("versions")}>Versions</button>
-            <button className={tab === "ai" ? "active" : ""} onClick={() => setTab("ai")}>AI Plan</button>
+
+        <ProInspector projectId={currentProjectId} onNotice={showNotice} />
+
+        {filmstripCollapsed ? (
+          <button className="filmstrip-collapsed-rail" onClick={() => setFilmstripCollapsed(false)}><Film size={15} /> Filmstrip <ChevronUp size={14} /></button>
+        ) : (
+          <div className="filmstrip-region">
+            <button className="filmstrip-collapse-toggle" title="Collapse filmstrip" aria-label="Collapse filmstrip" onClick={() => setFilmstripCollapsed(true)}><ChevronUp size={14} /></button>
+            <Filmstrip onNotice={showNotice} />
           </div>
-          {tab === "adjust" ? <AdjustmentPanel /> : tab === "curve" ? <ToneCurvePanel /> : tab === "geometry" ? <GeometryPanel /> : tab === "versions" ? <VersionPanel projectId={currentProjectId} /> : <AiPanel />}
-        </aside>
+        )}
+
+        {notice && <div className="toast professional-toast" role="status">{notice}</div>}
       </div>
     </AppShell>
   );
