@@ -40,7 +40,6 @@ export function AutoEnhanceSection({ onNotice }: { onNotice: (message: string) =
   const adjustments = useEditorStore((state) => state.adjustments);
   const apply = useEditorStore((state) => state.applyAdjustments);
   const preview = useEditorStore((state) => state.previewAdjustment);
-  const commit = useEditorStore((state) => state.commitAdjustments);
   const resetSection = useEditorStore((state) => state.resetSection);
   const mode = useStudioStore((state) => state.autoMode);
   const intensity = useStudioStore((state) => state.autoIntensity);
