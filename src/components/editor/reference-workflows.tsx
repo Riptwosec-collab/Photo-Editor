@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -197,11 +199,11 @@ export function ReversePresetSection({ onNotice }: { onNotice: (message: string)
         <Upload size={15} />
       </button>
       <SegmentedControl value={mode} options={matchModes} onChange={setMode} ariaLabel="Reference match mode" />
-      <label className="compact-slider-label"><span>Match strength</span><output>{strength}%</output><input type="range" min="0" max="100" value={strength} onChange={(event) => setStrength(Number(event.target.value))} /></label>
+      <label className="compact-slider-label"><span> <T text={"Match strength"} /> </span><output>{strength}%</output><input type="range" min="0" max="100" value={strength} onChange={(event) => setStrength(Number(event.target.value))} /></label>
       {status === "running" && <ProgressBar value={progress} label={message} />}
-      {status === "error" && <div className="inline-error"><TriangleAlert size={14} />{message}<button onClick={() => void generate()}><RefreshCw size={13} /> Retry</button></div>}
-      {status === "ready" && recipe && <div className="reference-result"><div><Check size={15} /><span><strong>Recipe ready</strong><small>{confidence}% confidence · {Object.keys(recipe).length} parameters</small></span></div><p>{message}</p></div>}
-      <div className="reference-actions"><button className="button primary" disabled={!reference || !image || status === "running"} onClick={() => void generate()}>{status === "running" ? <LoaderCircle className="spin" size={15} /> : <FileImage size={15} />} Generate preset</button><button className="button" disabled={!recipe} onClick={() => { if (recipe) { apply(recipe); onNotice("Reference recipe applied"); } }}>Apply</button></div>
+      {status === "error" && <div className="inline-error"><TriangleAlert size={14} />{message}<button onClick={() => void generate()}><RefreshCw size={13} /> <T text={"Retry"} /> </button></div>}
+      {status === "ready" && recipe && <div className="reference-result"><div><Check size={15} /><span><strong> <T text={"Recipe ready"} /> </strong><small>{confidence}% confidence · {Object.keys(recipe).length} <T text={"parameters"} /> </small></span></div><p>{message}</p></div>}
+      <div className="reference-actions"><button className="button primary" disabled={!reference || !image || status === "running"} onClick={() => void generate()}>{status === "running" ? <LoaderCircle className="spin" size={15} /> : <FileImage size={15} />} <T text={"Generate preset"} /> </button><button className="button" disabled={!recipe} onClick={() => { if (recipe) { apply(recipe); onNotice("Reference recipe applied"); } }}> <T text={"Apply"} /> </button></div>
       <div className="recipe-export-grid">
         <button disabled={!recipe} onClick={() => void saveInternal()}><Download size={13} /> Internal</button>
         <button disabled={!recipe} onClick={() => downloadText(`${baseName}.xmp`, "application/rdf+xml", xmp)}><Download size={13} /> XMP</button>
@@ -329,9 +331,9 @@ export function ColorConsistencySection({ onNotice }: { onNotice: (message: stri
         {references.map((item) => (
           <button key={item.id} className={item.id === primary?.id ? "active" : ""} onClick={() => setPrimaryId(item.id)} title={`${item.file.name}${item.error ? ` · ${item.error}` : ""}`}><img src={item.url} alt="" />{item.id === primary?.id && <Check size={12} />}</button>
         ))}
-        <button className="add-reference" onClick={() => inputRef.current?.click()}><ImagePlus size={17} /><span>Add reference</span></button>
+        <button className="add-reference" onClick={() => inputRef.current?.click()}><ImagePlus size={17} /><span> <T text={"Add reference"} /> </span></button>
       </div>
-      <label className="compact-slider-label"><span>Match strength</span><output>{strength}%</output><input type="range" min="0" max="100" value={strength} onChange={(event) => setStrength(Number(event.target.value))} /></label>
+      <label className="compact-slider-label"><span> <T text={"Match strength"} /> </span><output>{strength}%</output><input type="range" min="0" max="100" value={strength} onChange={(event) => setStrength(Number(event.target.value))} /></label>
       <div className="consistency-options">
         <Toggle label="Protect skin tones" checked={protectSkin} onChange={setProtectSkin} />
         <Toggle label="Match exposure" checked={matchExposure} onChange={setMatchExposure} />
@@ -343,7 +345,7 @@ export function ColorConsistencySection({ onNotice }: { onNotice: (message: stri
       {outliers.length > 0 && <div className="warning-row"><TriangleAlert size={14} /><span>{outliers.length} exposure outlier{outliers.length === 1 ? "" : "s"} detected.</span></div>}
       {progress > 0 && progress < 100 && <ProgressBar value={progress} label={status} />}
       {status && <p className="workflow-status"><ShieldCheck size={13} />{status}</p>}
-      <div className="consistency-actions"><button className="button primary" disabled={!primary?.average || !image} onClick={() => void applyCurrent()}>Apply to current</button><button className="button" disabled={!primary?.average || !image} onClick={() => void applyAlbum()}>Apply to album</button></div>
+      <div className="consistency-actions"><button className="button primary" disabled={!primary?.average || !image} onClick={() => void applyCurrent()}> <T text={"Apply to current"} /> </button><button className="button" disabled={!primary?.average || !image} onClick={() => void applyAlbum()}> <T text={"Apply to album"} /> </button></div>
     </div>
   );
 }

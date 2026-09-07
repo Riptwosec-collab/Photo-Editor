@@ -1,6 +1,7 @@
 "use client";
+import { T } from "@/features/i18n/text";
 
-import { useState } from "react";
+
 import {
   Aperture,
   ChevronRight,
@@ -26,6 +27,7 @@ import { AutoEnhanceSection } from "./auto-enhance-section";
 import { ColorConsistencySection, ReversePresetSection } from "./reference-workflows";
 import { ColorMixer } from "./color-mixer";
 import { GeometryPanel } from "./geometry-panel";
+import { LayerPanel } from "./layer-panel";
 import { Histogram } from "./histogram";
 import { ToneCurvePanel } from "./tone-curve-panel";
 import { VersionPanel } from "./version-panel";
@@ -59,14 +61,12 @@ export function ProInspector({
   const collapsed = useStudioStore((state) => state.inspectorCollapsed);
   const setCollapsed = useStudioStore((state) => state.setInspectorCollapsed);
   const activeSection = useStudioStore((state) => state.activeInspectorSection);
-  const maskOverlayVisible = useStudioStore((state) => state.maskOverlayVisible);
-  const toggleCanvasFlag = useStudioStore((state) => state.toggleCanvasFlag);
-  const [maskTool, setMaskTool] = useState<"linear" | "radial" | "brush" | "subject">("radial");
+
 
   if (collapsed) {
     return (
       <aside className="professional-inspector collapsed" aria-label="Editing inspector collapsed">
-        <button className="panel-rail-button" onClick={() => setCollapsed(false)} title="Open Editing Inspector"><SlidersHorizontal size={18} /><span>Edit</span></button>
+        <button className="panel-rail-button" onClick={() => setCollapsed(false)} title="Open Editing Inspector"><SlidersHorizontal size={18} /><span> <T text={"Edit"} /> </span></button>
       </aside>
     );
   }
@@ -74,10 +74,11 @@ export function ProInspector({
   return (
     <aside className="professional-inspector" aria-label="Editing inspector">
       <header className="inspector-header">
-        <div><span className="inspector-status-dot" /><div><strong>Editing Inspector</strong><small>Shared non-destructive recipe</small></div></div>
+        <div><span className="inspector-status-dot" /><div><strong> <T text={"Editing Inspector"} /> </strong><small>Shared non-destructive recipe</small></div></div>
         <button title="Collapse inspector" onClick={() => setCollapsed(true)}><PanelRightClose size={15} /></button>
       </header>
       <div className="inspector-scroll">
+        <AccordionSection id="layers" title="Layers & Masks" icon={<Layers3 size={15} />} forceOpen={activeSection === "layers"}><LayerPanel /></AccordionSection>
         <AccordionSection id="histogram" title="Histogram" subtitle="RGB + luminance · live" icon={<Gauge size={15} />} defaultOpen forceOpen={activeSection === "histogram"}>
           <Histogram />
         </AccordionSection>
@@ -105,7 +106,7 @@ export function ProInspector({
           icon={<Sun size={15} />}
           defaultOpen
           forceOpen={activeSection === "light"}
-          actions={<button className="mini-reset" title="Reset Light" onClick={() => resetSection([...lightKeys])}>Reset</button>}
+          actions={<button className="mini-reset" title="Reset Light" onClick={() => resetSection([...lightKeys])}> <T text={"Reset"} /> </button>}
         >
           <AdjustmentSlider adjustment="exposure" label="Exposure" min={-2} max={2} step={0.01} unit="EV" />
           <AdjustmentSlider adjustment="contrast" label="Contrast" min={-100} max={100} />
@@ -134,13 +135,13 @@ export function ProInspector({
         </AccordionSection>
 
         <AccordionSection id="color-grading" title="Color Grading" subtitle="Shadows · Midtones · Highlights" icon={<CircleDot size={15} />} forceOpen={activeSection === "color-grading"}>
-          <div className="grading-wheel-row"><span className="grading-wheel shadow" style={{ "--wheel-hue": "var(--shadow-hue, 220deg)" } as React.CSSProperties} /><div><strong>Shadows</strong><small>Hue and saturation</small></div></div>
+          <div className="grading-wheel-row"><span className="grading-wheel shadow" style={{ "--wheel-hue": "var(--shadow-hue, 220deg)" } as React.CSSProperties} /><div><strong> <T text={"Shadows"} /> </strong><small> <T text={"Hue and saturation"} /> </small></div></div>
           <AdjustmentSlider adjustment="shadowHue" label="Shadow Hue" min={0} max={360} unit="°" />
           <AdjustmentSlider adjustment="shadowSaturation" label="Shadow Saturation" min={0} max={100} />
-          <div className="grading-wheel-row"><span className="grading-wheel midtone" /><div><strong>Midtones</strong><small>Hue and saturation</small></div></div>
+          <div className="grading-wheel-row"><span className="grading-wheel midtone" /><div><strong> <T text={"Midtones"} /> </strong><small> <T text={"Hue and saturation"} /> </small></div></div>
           <AdjustmentSlider adjustment="midtoneHue" label="Midtone Hue" min={0} max={360} unit="°" />
           <AdjustmentSlider adjustment="midtoneSaturation" label="Midtone Saturation" min={0} max={100} />
-          <div className="grading-wheel-row"><span className="grading-wheel highlight" /><div><strong>Highlights</strong><small>Hue and saturation</small></div></div>
+          <div className="grading-wheel-row"><span className="grading-wheel highlight" /><div><strong> <T text={"Highlights"} /> </strong><small> <T text={"Hue and saturation"} /> </small></div></div>
           <AdjustmentSlider adjustment="highlightHue" label="Highlight Hue" min={0} max={360} unit="°" />
           <AdjustmentSlider adjustment="highlightSaturation" label="Highlight Saturation" min={0} max={100} />
           <AdjustmentSlider adjustment="gradingBalance" label="Balance" min={-100} max={100} />
@@ -169,25 +170,17 @@ export function ProInspector({
           <GeometryPanel embedded />
         </AccordionSection>
 
-        <AccordionSection id="masking" title="Masking" subtitle="Local selection preview" icon={<Layers3 size={15} />} badge="PARTIAL" forceOpen={activeSection === "masking"}>
-          <div className="mask-tool-grid">
-            {(["linear", "radial", "brush", "subject"] as const).map((tool) => <button key={tool} className={maskTool === tool ? "active" : ""} onClick={() => { setMaskTool(tool); if (!maskOverlayVisible) toggleCanvasFlag("maskOverlayVisible"); }}>{tool}</button>)}
-          </div>
-          <Toggle label="Show mask overlay" description="Displays the selected local preview on canvas" checked={maskOverlayVisible} onChange={() => toggleCanvasFlag("maskOverlayVisible")} />
-          <p className="capability-note"><Info size={13} />Overlay interaction is functional. Per-pixel local adjustment compositing is not yet represented as complete.</p>
-        </AccordionSection>
-
         <AccordionSection id="metadata" title="Metadata" subtitle="File and project information" icon={<Tags size={15} />} forceOpen={activeSection === "metadata"}>
           <dl className="metadata-list">
-            <div><dt>Filename</dt><dd>{image?.name ?? "—"}</dd></div>
-            <div><dt>File type</dt><dd>{image?.rawType ?? image?.type ?? "—"}</dd></div>
-            <div><dt>Resolution</dt><dd>{image ? `${image.width} × ${image.height}` : "—"}</dd></div>
-            <div><dt>Size</dt><dd>{image ? `${(image.size / 1024 / 1024).toFixed(2)} MB` : "—"}</dd></div>
-            <div><dt>Camera</dt><dd>{image?.camera ?? "Not embedded"}</dd></div>
+            <div><dt> <T text={"Filename"} /> </dt><dd>{image?.name ?? "—"}</dd></div>
+            <div><dt> <T text={"File type"} /> </dt><dd>{image?.rawType ?? image?.type ?? "—"}</dd></div>
+            <div><dt> <T text={"Resolution"} /> </dt><dd>{image ? `${image.width} × ${image.height}` : "—"}</dd></div>
+            <div><dt> <T text={"Size"} /> </dt><dd>{image ? `${(image.size / 1024 / 1024).toFixed(2)} MB` : "—"}</dd></div>
+            <div><dt> <T text={"Camera"} /> </dt><dd>{image?.camera ?? "Not embedded"}</dd></div>
             <div><dt>ISO</dt><dd>{image?.iso ?? "—"}</dd></div>
-            <div><dt>Aperture</dt><dd>{image?.aperture ?? "—"}</dd></div>
-            <div><dt>Focal length</dt><dd>{image?.focalLength ?? "—"}</dd></div>
-            <div><dt>Shutter</dt><dd>{image?.shutterSpeed ?? "—"}</dd></div>
+            <div><dt> <T text={"Aperture"} /> </dt><dd>{image?.aperture ?? "—"}</dd></div>
+            <div><dt> <T text={"Focal length"} /> </dt><dd>{image?.focalLength ?? "—"}</dd></div>
+            <div><dt> <T text={"Shutter"} /> </dt><dd>{image?.shutterSpeed ?? "—"}</dd></div>
           </dl>
         </AccordionSection>
 
@@ -195,7 +188,7 @@ export function ProInspector({
           <VersionPanel projectId={projectId} embedded />
         </AccordionSection>
       </div>
-      <footer className="inspector-footer"><span>Shared renderer</span><ChevronRight size={13} /><span>Non-destructive</span></footer>
+      <footer className="inspector-footer"><span>Shared renderer</span><ChevronRight size={13} /><span> <T text={"Non-destructive"} /> </span></footer>
     </aside>
   );
 }

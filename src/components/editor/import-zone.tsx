@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, ClipboardPaste, ImagePlus, LoaderCircle } from "lucide-react";
@@ -55,6 +57,7 @@ export function ImportZone() {
         if (!dimensions.width || !dimensions.height) {
           throw new Error("Image dimensions are unavailable");
         }
+        if (dimensions.width * dimensions.height > 60_000_000) throw new Error("Image exceeds 60 megapixels");
         setImage({
           name:
             file.name ||
@@ -142,11 +145,9 @@ export function ImportZone() {
       </button>
       <div className="import-actions">
         <button className="button" onClick={() => void readClipboard()}>
-          <ClipboardPaste size={16} /> Paste image
-        </button>
+          <ClipboardPaste size={16} /> <T text={"Paste image"} /> </button>
         <button className="button" onClick={() => cameraRef.current?.click()}>
-          <Camera size={16} /> Open camera
-        </button>
+          <Camera size={16} /> <T text={"Open camera"} /> </button>
       </div>
       <input
         ref={inputRef}

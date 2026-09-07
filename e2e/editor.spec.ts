@@ -33,7 +33,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 test("landing opens canonical functional editor", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: /เริ่มแต่งภาพ/ }).click();
+  await page.getByRole("link", { name: /Start editing|เริ่มแต่งภาพ/ }).click();
   await expect(page.getByText(/ลากภาพมาวาง/)).toBeVisible();
   await expect(page.locator("nav.desktop-navigation")).toBeVisible();
 });
@@ -90,7 +90,14 @@ test("AI Auto Enhance and personal preset remain one unified recipe system", asy
 
   page.once("dialog", async (dialog) => dialog.accept("E2E Look"));
   await page.getByRole("button", { name: /Save current/ }).click();
-  await expect(page.getByRole("button", { name: /E2E Look/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "E2E Look", exact: true })).toBeVisible();
   await page.goto("/presets");
   await expect(page.getByText("E2E Look", { exact: true })).toBeVisible();
+});
+
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("lumaforge-preferences-v1")) localStorage.setItem("lumaforge-preferences-v1", JSON.stringify({ state: { language: "en" }, version: 0 }));
+  });
 });

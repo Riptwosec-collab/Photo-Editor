@@ -1,15 +1,20 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useCallback, useEffect, useState } from "react";
 import { Camera, Copy, GitBranch, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import { useEditorStore } from "@/features/editor/store";
 import type { StoredVersion } from "@/features/editor/types";
+import { RecipeThumbnail } from "./recipe-thumbnail";
 import { deleteVersion, listVersions, renameVersion, saveVersion } from "@/lib/idb";
 
 export function VersionPanel({ projectId, embedded = false }: { projectId: string | null; embedded?: boolean }) {
+  const image = useEditorStore((s) => s.image);
+  const layers = useEditorStore((s) => s.layers);
+  const restoreSnapshot = useEditorStore((s) => s.restoreSnapshot);
   const adjustments = useEditorStore((state) => state.adjustments);
   const geometry = useEditorStore((state) => state.geometry);
-  const loadRecipe = useEditorStore((state) => state.loadRecipe);
   const [versions, setVersions] = useState<StoredVersion[]>([]);
   const [status, setStatus] = useState("");
 
@@ -44,6 +49,7 @@ export function VersionPanel({ projectId, embedded = false }: { projectId: strin
       createdAt: now.toISOString(),
       adjustments: { ...adjustments },
       geometry: { ...geometry },
+      layers: structuredClone(layers),
     };
     try {
       await saveVersion(version);
@@ -89,15 +95,15 @@ export function VersionPanel({ projectId, embedded = false }: { projectId: strin
 
   return (
     <div className={embedded ? "inline-editor-panel version-panel embedded" : "panel-scroll version-panel"}>
-      {!embedded && <div className="panel-title"><div><span className="kicker">Non-destructive</span><h2>Snapshots</h2></div><button className="icon-button" title="Refresh snapshots" onClick={() => void refresh()}><RotateCcw size={16} /></button></div>}
+      {!embedded && <div className="panel-title"><div><span className="kicker"> <T text={"Non-destructive"} /> </span><h2> <T text={"Snapshots"} /> </h2></div><button className="icon-button" title="Refresh snapshots" onClick={() => void refresh()}><RotateCcw size={16} /></button></div>}
       <p className="control-note">Snapshots store the edit recipe and geometry. Original image bytes are never overwritten.</p>
-      <div className="version-primary-actions"><button className="button primary compact" disabled={!projectId} onClick={() => void createSnapshot()}><Camera size={15} /> Create snapshot</button><button className="icon-button" title="Refresh snapshots" onClick={() => void refresh()}><RotateCcw size={14} /></button></div>
-      {!projectId && <p className="version-hint">Save this project first to enable durable snapshots.</p>}
+      <div className="version-primary-actions"><button className="button primary compact" disabled={!projectId} onClick={() => void createSnapshot()}><Camera size={15} /> <T text={"Create snapshot"} /> </button><button className="icon-button" title="Refresh snapshots" onClick={() => void refresh()}><RotateCcw size={14} /></button></div>
+      {!projectId && <p className="version-hint"> <T text={"Save this project first to enable durable snapshots."} /> </p>}
       {status && <p role="status" className="version-status">{status}</p>}
       <div className="version-list">
         {versions.map((version) => (
           <article key={version.id} className="version-row expanded-actions">
-            <button className="version-restore" onClick={() => { loadRecipe(version.adjustments, version.geometry); setStatus(`Restored ${version.name}`); }}><strong>{version.name}</strong><small>{new Date(version.createdAt).toLocaleString()}</small></button>
+            <button className="version-restore" onClick={() => { restoreSnapshot(version); setStatus(`Restored ${version.name}`); }}><RecipeThumbnail url={image?.objectUrl} adjustments={version.adjustments} geometry={version.geometry} layers={version.layers} /><strong>{version.name}</strong><small>{new Date(version.createdAt).toLocaleString()}</small></button>
             <button className="icon-button" title="Rename snapshot" onClick={() => void editName(version)}><Pencil size={13} /></button>
             <button className="icon-button" title="Duplicate version" onClick={() => void duplicateVersion(version)}><Copy size={13} /></button>
             <button className="icon-button" title="Branch version" onClick={() => void branchVersion(version)}><GitBranch size={13} /></button>
@@ -105,7 +111,7 @@ export function VersionPanel({ projectId, embedded = false }: { projectId: strin
           </article>
         ))}
       </div>
-      {projectId && !versions.length && <div className="mini-empty">No snapshots yet.</div>}
+      {projectId && !versions.length && <div className="mini-empty"> <T text={"No snapshots yet."} /> </div>}
     </div>
   );
 }

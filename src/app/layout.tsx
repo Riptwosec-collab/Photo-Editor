@@ -10,6 +10,7 @@ import "./import-tools.css";
 import "./interaction-fixes.css";
 import "./pro-studio.css";
 import "./studio-upgrade.css";
+import "./studio-workflows.css";
 import { Providers } from "@/components/providers";
 
 

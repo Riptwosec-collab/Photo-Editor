@@ -1,208 +1,63 @@
 "use client";
+import { T } from "@/features/i18n/text";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileImage, History, LoaderCircle, RefreshCcw } from "lucide-react";
+import { Download, RefreshCcw, FileImage } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
-import { renderToCanvas } from "@/features/editor/image-processing";
-import type { AspectRatio, ExportFormat, ExportRecord, StoredProject } from "@/features/editor/types";
 import { listExportRecords, listProjects, saveExportRecord } from "@/lib/idb";
-
-type ExportPreset = {
-  id: string;
-  name: string;
-  description: string;
-  format: ExportFormat;
-  quality: number;
-  longEdge: number;
-  aspectRatio?: AspectRatio;
-};
-
-const presets: ExportPreset[] = [
-  { id: "instagram-feed", name: "Instagram Feed", description: "JPG · sRGB · 4:5 · 1350 px long edge", format: "image/jpeg", quality: 0.9, longEdge: 1350, aspectRatio: "4:5" },
-  { id: "web", name: "Web", description: "WebP · sRGB · 2048 px long edge", format: "image/webp", quality: 0.86, longEdge: 2048 },
-  { id: "high-quality", name: "High Quality", description: "JPG · sRGB · up to 6000 px", format: "image/jpeg", quality: 0.95, longEdge: 6000 },
-  { id: "transparent", name: "PNG", description: "PNG · sRGB · lossless browser export", format: "image/png", quality: 1, longEdge: 6000 },
+import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
+import type { StoredProject, ExportRecord, ExportFormat, AspectRatio } from "@/features/editor/types";
+import { prepareExport, metadataSidecar, type ExportOptions } from "@/features/render/export";
+import { exportBackup, downloadBlob } from "@/features/projects/backup";
+const presets = [
+  { id: "instagram-feed", name: "Instagram Feed", format: "image/jpeg" as const, quality: .9, longEdge: 1350, aspectRatio: "4:5" as AspectRatio },
+  { id: "web", name: "Web", format: "image/webp" as const, quality: .86, longEdge: 2048 },
+  { id: "high-quality", name: "High Quality", format: "image/jpeg" as const, quality: .95, longEdge: 6000 },
+  { id: "transparent", name: "PNG", format: "image/png" as const, quality: 1, longEdge: 6000 },
 ];
-
-function extensionFor(format: ExportFormat) {
-  if (format === "image/png") return "png";
-  if (format === "image/webp") return "webp";
-  return "jpg";
-}
-
-function normalizeProject(project: StoredProject): StoredProject {
-  return {
-    ...project,
-    adjustments: { ...DEFAULT_ADJUSTMENTS, ...project.adjustments },
-    geometry: { ...DEFAULT_GEOMETRY, ...project.geometry },
-  };
-}
-
-function ExportPreview({ project, longEdge, aspectRatio }: { project: StoredProject; longEdge: number; aspectRatio?: AspectRatio }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const objectUrl = URL.createObjectURL(project.imageBlob);
-    const source = new window.Image();
-    source.onload = () => {
-      if (!canvasRef.current) return;
-      renderToCanvas(
-        source,
-        source.naturalWidth,
-        source.naturalHeight,
-        canvasRef.current,
-        project.adjustments,
-        { ...project.geometry, aspectRatio: aspectRatio ?? project.geometry.aspectRatio },
-        Math.min(longEdge, 900),
-      );
-    };
-    source.src = objectUrl;
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [aspectRatio, longEdge, project]);
-
-  return <canvas ref={canvasRef} aria-label="Export preview" />;
-}
-
 export function ExportCenter() {
+  const canvas = useRef<HTMLCanvasElement>(null);
   const [projects, setProjects] = useState<StoredProject[]>([]);
   const [projectId, setProjectId] = useState("");
   const [presetId, setPresetId] = useState("instagram-feed");
-  const [format, setFormat] = useState<ExportFormat>("image/jpeg");
-  const [quality, setQuality] = useState(0.9);
-  const [longEdge, setLongEdge] = useState(1350);
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio | undefined>("4:5");
+  const [options, setOptions] = useState<ExportOptions>({ format: "image/jpeg", quality: .9, longEdge: 1350, aspectRatio: "4:5", watermark: "", watermarkOpacity: .7, background: "#ffffff" });
+  const [prepared, setPrepared] = useState<{ key: string; blob: Blob; width: number; height: number } | null>(null);
   const [history, setHistory] = useState<ExportRecord[]>([]);
-  const [status, setStatus] = useState("Loading saved projects…");
-  const [exporting, setExporting] = useState(false);
-
+  const [metadata, setMetadata] = useState(false);
+  const [location, setLocation] = useState(false);
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const project = useMemo(() => projects.find((p) => p.id === projectId), [projects,projectId]);
+  const key = JSON.stringify({ id: project?.id, updated: project?.updatedAt, options });
+  const ready = prepared?.key === key ? prepared : null;
   const refresh = useCallback(async () => {
-    try {
-      const rows = (await listProjects()).map(normalizeProject);
-      setProjects(rows);
-      setProjectId((current) => current || rows[0]?.id || "");
-      setHistory(await listExportRecords());
-      setStatus(rows.length ? "" : "Save a project before using Export Center.");
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Unable to load export data");
-    }
+    try { const rows = (await listProjects()).map((p) => ({ ...p, adjustments: { ...DEFAULT_ADJUSTMENTS, ...p.adjustments }, geometry: { ...DEFAULT_GEOMETRY, ...p.geometry } })); setProjects(rows); setProjectId((id) => rows.some((p) => p.id === id) ? id : rows[0]?.id ?? ""); setHistory(await listExportRecords()); }
+    catch { setStatus("Unable to load saved projects"); }
   }, []);
-
+  useEffect(() => { const timer = setTimeout(() => void refresh(), 0); return () => clearTimeout(timer); }, [refresh]);
   useEffect(() => {
-    const timer = window.setTimeout(() => void refresh(), 0);
-    return () => window.clearTimeout(timer);
-  }, [refresh]);
-
-  const selectedProject = useMemo(
-    () => projects.find((project) => project.id === projectId),
-    [projectId, projects],
-  );
-
-  function applyPreset(id: string) {
-    const preset = presets.find((candidate) => candidate.id === id);
-    if (!preset) return;
-    setPresetId(id);
-    setFormat(preset.format);
-    setQuality(preset.quality);
-    setLongEdge(preset.longEdge);
-    setAspectRatio(preset.aspectRatio);
-  }
-
-  async function exportProject() {
-    if (!selectedProject || exporting) return;
-    setExporting(true);
-    setStatus("Rendering export…");
-    const objectUrl = URL.createObjectURL(selectedProject.imageBlob);
+    if (!project || !canvas.current) return;
+    const controller = new AbortController(); const target = canvas.current;
+    const timer = setTimeout(() => {
+      setBusy(true); setStatus("Preparing full-resolution export…");
+      void prepareExport(target, project, options, controller.signal).then((blob) => {
+        if (!controller.signal.aborted) { setPrepared({ key, blob, width: target.width, height: target.height }); setStatus("Ready to download"); }
+      }).catch((e) => { if (!controller.signal.aborted) setStatus(e instanceof Error ? e.message : "Export preview failed"); }).finally(() => { if (!controller.signal.aborted) setBusy(false); });
+    }, 450);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [project, options, key]);
+  async function download() {
+    if (!project || !ready) return;
+    const ext = options.format === "image/jpeg" ? "jpg" : options.format.split("/")[1];
+    const filename = `${project.name.replace(/[^\p{L}\p{N}_-]+/gu,"-")}-${presetId}.${ext}`;
     try {
-      const source = new window.Image();
-      source.src = objectUrl;
-      await source.decode();
-      const canvas = document.createElement("canvas");
-      const result = renderToCanvas(
-        source,
-        source.naturalWidth,
-        source.naturalHeight,
-        canvas,
-        selectedProject.adjustments,
-        { ...selectedProject.geometry, aspectRatio: aspectRatio ?? selectedProject.geometry.aspectRatio },
-        longEdge,
-      );
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, format, format === "image/png" ? undefined : quality),
-      );
-      if (!blob) throw new Error(`${format} export is not supported by this browser`);
-      const filename = `${selectedProject.name.replace(/[^a-z0-9-_]+/gi, "-")}-${presetId}.${extensionFor(format)}`;
-      const downloadUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = filename;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 2500);
-      await saveExportRecord({
-        id: crypto.randomUUID(),
-        projectId: selectedProject.id,
-        createdAt: new Date().toISOString(),
-        format,
-        quality,
-        longEdge,
-        width: result.width,
-        height: result.height,
-        filename,
-        colorSpace: "sRGB",
-      });
-      setHistory(await listExportRecords());
-      setStatus(`Exported ${filename} (${result.width} × ${result.height})`);
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Export failed");
-    } finally {
-      URL.revokeObjectURL(objectUrl);
-      setExporting(false);
-    }
+      // Generate optional metadata before triggering downloads, so errors cannot be mistaken for a completed export.
+      const sidecar = metadata ? await metadataSidecar(project.imageBlob, location) : null;
+      downloadBlob(ready.blob, filename);
+      if (sidecar) downloadBlob(sidecar, `${filename}.metadata.json`);
+      await saveExportRecord({ id: crypto.randomUUID(), projectId: project.id, createdAt: new Date().toISOString(), format: options.format, quality: options.quality, longEdge: options.longEdge, width: ready.width, height: ready.height, filename, colorSpace: "sRGB" });
+      setHistory(await listExportRecords()); setStatus(`Exported ${filename} (${ready.width} × ${ready.height})`);
+    } catch (e) { setStatus(e instanceof Error ? e.message : "Export failed"); }
   }
-
-  return (
-    <AppShell>
-      <main className="export-page">
-        <header className="project-heading">
-          <div>
-            <span className="kicker">Same renderer as editor preview</span>
-            <h1>Export Center</h1>
-            <p>Exports use the saved project recipe, crop, tone curve, sharpness and denoise. Browser Canvas output is tagged operationally as sRGB; embedded ICC and EXIF metadata are not preserved in this MVP.</p>
-          </div>
-          <button className="button" onClick={() => void refresh()}><RefreshCcw size={16} /> Refresh</button>
-        </header>
-
-        <section className="export-layout">
-          <div className="export-preview-card">
-            {selectedProject ? (
-              <>
-                <ExportPreview project={selectedProject} longEdge={longEdge} aspectRatio={aspectRatio} />
-                <div><strong>{selectedProject.name}</strong><small>{selectedProject.width} × {selectedProject.height} source</small></div>
-              </>
-            ) : (
-              <div className="empty-state"><FileImage /><h2>No saved project</h2><p>Save an image from the editor first.</p></div>
-            )}
-          </div>
-
-          <div className="export-settings">
-            <label>Project<select value={projectId} onChange={(event) => setProjectId(event.target.value)}>{projects.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}</select></label>
-            <div className="export-presets">{presets.map((preset) => <button key={preset.id} className={presetId === preset.id ? "export-preset active" : "export-preset"} onClick={() => applyPreset(preset.id)}><strong>{preset.name}</strong><small>{preset.description}</small></button>)}</div>
-            <label>Format<select value={format} onChange={(event) => { setPresetId("custom"); setFormat(event.target.value as ExportFormat); }}><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select></label>
-            <label>Quality <output>{Math.round(quality * 100)}%</output><input type="range" min="0.5" max="1" step="0.01" value={quality} disabled={format === "image/png"} onChange={(event) => { setPresetId("custom"); setQuality(Number(event.target.value)); }} /></label>
-            <label>Long edge <output>{longEdge}px</output><input type="range" min="640" max="6000" step="10" value={longEdge} onChange={(event) => { setPresetId("custom"); setLongEdge(Number(event.target.value)); }} /></label>
-            <label>Export crop<select value={aspectRatio ?? "project"} onChange={(event) => { setPresetId("custom"); setAspectRatio(event.target.value === "project" ? undefined : event.target.value as AspectRatio); }}><option value="project">Project crop</option><option value="original">Original ratio</option><option value="1:1">1:1</option><option value="4:5">4:5</option><option value="16:9">16:9</option></select></label>
-            <div className="export-disclosure"><strong>Color: sRGB</strong><span>Metadata: stripped · Watermark: not implemented · Unsupported encoders show an error</span></div>
-            <button className="button primary export-button" disabled={!selectedProject || exporting} onClick={() => void exportProject()}>{exporting ? <LoaderCircle className="spin" size={17} /> : <Download size={17} />} Export and download</button>
-            {status && <p role="status" className="export-status">{status}</p>}
-          </div>
-        </section>
-
-        <section className="export-history">
-          <div className="section-heading"><History /><div><h2>Export history</h2><p>Records successful browser exports only.</p></div></div>
-          <div className="export-history-list">{history.slice(0, 20).map((record) => <article key={record.id}><div><strong>{record.filename}</strong><small>{new Date(record.createdAt).toLocaleString()}</small></div><span>{record.width} × {record.height}</span><span>{record.format.replace("image/", "").toUpperCase()} · {record.colorSpace}</span></article>)}</div>
-          {!history.length && <div className="mini-empty">No successful exports recorded.</div>}
-        </section>
-      </main>
-    </AppShell>
-  );
+  return <AppShell><main className="export-page"><header className="project-heading"><div><span className="kicker"> <T text={"Your finished image"} /> </span><h1> <T text={"Export Center"} /> </h1><p>Layers, masks and text are included. The size below is measured from the encoded file. Original metadata is removed from the image; selected camera information can be saved as a separate JSON file.</p></div><button className="button" onClick={() => void refresh()}><RefreshCcw size={16} /> <T text={"Refresh"} /> </button></header><section className="export-layout"><div className="export-preview-card">{project ? <><canvas ref={canvas} aria-label="Export preview" /><strong>{project.name}</strong><small>{ready ? `${ready.width} × ${ready.height} · ${(ready.blob.size / 1048576).toFixed(2)} MB` : "Preparing preview…"}</small></> : <div className="empty-state"><FileImage /><h2> <T text={"No saved project"} /> </h2><p> <T text={"Save an image from the editor first."} /> </p></div>}</div><div className="export-settings"><label> <T text={"Project"} /> <select value={projectId} onChange={(e) => setProjectId(e.target.value)}>{projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><div className="export-presets">{presets.map((p) => <button className={presetId === p.id ? "active" : ""} key={p.id} onClick={() => { setPresetId(p.id); setOptions((o) => ({ ...o, format: p.format, quality: p.quality, longEdge: p.longEdge, aspectRatio: p.aspectRatio })); }}>{p.name}</button>)}</div><label> <T text={"Format"} /> <select value={options.format} onChange={(e) => setOptions((o) => ({ ...o, format: e.target.value as ExportFormat }))}><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select></label><label> <T text={"Quality"} /> {Math.round(options.quality*100)}%<input type="range" min=".1" max="1" step=".01" disabled={options.format === "image/png"} value={options.quality} onChange={(e) => setOptions((o) => ({ ...o, quality: +e.target.value }))} /></label><label> <T text={"Long edge (pixels)"} /> <input type="number" min="64" max="6000" value={options.longEdge} onChange={(e) => setOptions((o) => ({ ...o, longEdge: Math.max(64,Math.min(6000,+e.target.value)) }))} /></label><label> <T text={"Watermark"} /> <input maxLength={120} value={options.watermark} onChange={(e) => setOptions((o) => ({ ...o, watermark: e.target.value }))} placeholder="Your name or studio" /></label><label> <T text={"Watermark opacity"} /> <input type="range" min=".1" max="1" step=".05" value={options.watermarkOpacity} onChange={(e) => setOptions((o) => ({ ...o, watermarkOpacity: +e.target.value }))} /></label><label> <T text={"JPEG background"} /> <input type="color" value={options.background} onChange={(e) => setOptions((o) => ({ ...o, background: e.target.value }))} /></label><label><input type="checkbox" checked={metadata} onChange={(e) => setMetadata(e.target.checked)} /> <T text={"Save camera metadata as JSON"} /> </label><label><input type="checkbox" checked={location} disabled={!metadata} onChange={(e) => setLocation(e.target.checked)} /> <T text={"Include GPS location in JSON"} /> </label><button className="button primary" disabled={!ready || busy} onClick={() => void download()}><Download size={16} /> <T text={"Export and download"} /> </button><button className="button" disabled={!project} onClick={() => { if (project) void exportBackup(project).then((blob) => downloadBlob(blob, `${project.name}.lumaforge.json`)).catch(() => setStatus("Backup failed")); }}> <T text={"Download editable project backup"} /> </button></div></section><p className="export-status" role="status"><T text={status} /></p><section className="export-history"><h2> <T text={"Export history"} /> </h2>{history.slice(0,20).map((row) => <div key={row.id}><strong>{row.filename}</strong><small>{row.width} × {row.height} · {new Date(row.createdAt).toLocaleString()}</small></div>)}</section></main></AppShell>;
 }

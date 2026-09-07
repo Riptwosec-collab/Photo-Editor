@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import Link from "next/link";
 import {
@@ -76,7 +78,7 @@ export function EditorTopToolbar({
           <ArrowLeft size={16} />
         </Link>
         <div className="project-title-stack">
-          <span className="project-context">Projects / Editor</span>
+          <span className="project-context"> <T text={"Projects / Editor"} /> </span>
           <input
             className="project-title-input"
             aria-label="Project title"
@@ -108,7 +110,7 @@ export function EditorTopToolbar({
 
         <div className="toolbar-cluster toolbar-text-actions">
           <button className="toolbar-button" onClick={cycleCompare} disabled={!image} title="Cycle comparison layouts">
-            <Columns2 size={15} /> <span>Compare</span><small>{compareMode}</small>
+            <Columns2 size={15} /> <span> <T text={"Compare"} /> </span><small>{compareMode}</small>
           </button>
           <button
             className="toolbar-button"
@@ -118,10 +120,10 @@ export function EditorTopToolbar({
             onPointerLeave={() => toggleOriginal(false)}
             title="Press and hold to preview original"
           >
-            <Eye size={15} /> <span>Preview</span>
+            <Eye size={15} /> <span> <T text={"Preview"} /> </span>
           </button>
           <button className="toolbar-button" onClick={() => void shareProject()} disabled={!image}>
-            <Share2 size={15} /> <span>Share</span>
+            <Share2 size={15} /> <span> <T text={"Share"} /> </span>
           </button>
         </div>
 
@@ -130,8 +132,7 @@ export function EditorTopToolbar({
             {syncState === "saved" ? <Check size={16} /> : <Save size={16} />}
           </button>
           <button className="export-primary" onClick={onExport} disabled={!image}>
-            <Download size={16} /> Export
-          </button>
+            <Download size={16} /> <T text={"Export"} /> </button>
           <button className="toolbar-icon" title="No unread notifications" aria-label="Notifications">
             <Bell size={16} />
           </button>

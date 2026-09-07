@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -13,7 +15,8 @@ import {
   SquareDashed,
 } from "lucide-react";
 import { DEFAULT_ADJUSTMENTS } from "@/features/editor/defaults";
-import { renderToCanvas } from "@/features/editor/image-processing";
+import { renderStudio } from "@/features/render/studio-renderer";
+import { MaskCanvas } from "./mask-canvas";
 import { useEditorStore } from "@/features/editor/store";
 import { usePreferences } from "@/features/studio/preferences";
 import { useStudioStore } from "@/features/studio/store";
@@ -21,7 +24,12 @@ import { cn } from "@/lib/cn";
 
 export function CanvasStage() {
   const performanceMode = usePreferences((s) => s.performanceMode);
-  const sourceCache = useRef<HTMLImageElement | null>(null);
+  const blobCache = useRef<{ url: string; value: Promise<Blob> } | null>(null);
+  const layers = useEditorStore((s) => s.layers);
+  const maskEditing = useEditorStore((s) => s.maskEditing);
+  const committed = useEditorStore((s) => s.committed);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ distance: number; zoom: number; x: number; y: number; px: number; py: number } | null>(null);
   const [renderError, setRenderError] = useState("");
   const [panEnabled, setPanEnabled] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -74,41 +82,24 @@ export function CanvasStage() {
 
   useEffect(() => {
     if (!image) return;
-    let cancelled = false;
-    let frame = 0;
-    const source = sourceCache.current?.src === image.objectUrl ? sourceCache.current : new Image();
-    const draw = () => {
-      if (cancelled) return;
-      setRendering(true);
-      setRenderError("");
-      frame = requestAnimationFrame(() => {
-        if (cancelled) return;
-        try {
-          const limit = performanceMode ? 1000 : 1800;
-          if (compareMode === "grid") {
-            gridRefs.current.forEach((canvas, index) => {
-              if (canvas) renderToCanvas(source, source.naturalWidth, source.naturalHeight, canvas,
-                index % 2 === 0 ? DEFAULT_ADJUSTMENTS : adjustments, geometry, Math.min(limit, 900));
-            });
-          } else {
-            if (editedRef.current) renderToCanvas(source, source.naturalWidth, source.naturalHeight,
-              editedRef.current, adjustments, geometry, limit);
-            if (originalRef.current) renderToCanvas(source, source.naturalWidth, source.naturalHeight,
-              originalRef.current, DEFAULT_ADJUSTMENTS, geometry, limit);
-          }
-        } catch (error) {
-          setRenderError(error instanceof Error ? error.message : "Could not render this image");
-        } finally { setRendering(false); }
-      });
-    };
-    if (source.complete && source.naturalWidth && source.src === image.objectUrl) draw();
-    else {
-      source.onload = () => { sourceCache.current = source; draw(); };
-      source.onerror = () => { if (!cancelled) { setRenderError("Could not decode the image. Please import it again."); setRendering(false); } };
-      source.src = image.objectUrl;
-    }
-    return () => { cancelled = true; cancelAnimationFrame(frame); source.onload = null; source.onerror = null; };
-  }, [adjustments, geometry, image, compareMode, performanceMode]);
+    const controller = new AbortController();
+    const moving = adjustments !== committed.adjustments && JSON.stringify(adjustments) !== JSON.stringify(committed.adjustments);
+    const timer = setTimeout(async () => {
+      setRendering(true); setRenderError("");
+      try {
+        if (blobCache.current?.url !== image.objectUrl) blobCache.current = { url: image.objectUrl, value: fetch(image.objectUrl).then((r) => r.blob()) };
+        const blob = await blobCache.current.value;
+        const limit = moving ? 720 : performanceMode ? 1000 : 1800;
+        const targets = compareMode === "grid" ? gridRefs.current.map((canvas, i) => ({ canvas, before: i % 2 === 0 })) : [{ canvas: originalRef.current, before: true }, { canvas: editedRef.current, before: false }];
+        for (const { canvas, before } of targets) {
+          if (controller.signal.aborted) return;
+          if (canvas) await renderStudio(canvas, { blob, adjustments: before ? DEFAULT_ADJUSTMENTS : adjustments, geometry, layers: before ? [] : layers, limit: compareMode === "grid" ? Math.min(900, limit) : limit }, controller.signal);
+        }
+      } catch (error) { if (!controller.signal.aborted) setRenderError(error instanceof Error ? error.message : "Render failed"); }
+      finally { if (!controller.signal.aborted) setRendering(false); }
+    }, moving ? 45 : 120);
+    return () => { clearTimeout(timer); controller.abort(); };
+  }, [adjustments, geometry, image, compareMode, performanceMode, layers, committed]);
 
   if (!image) return null;
 
@@ -144,21 +135,27 @@ export function CanvasStage() {
           }
         }}
         onPointerDown={(event) => {
-          if (compareMode !== "off" && (event.target as HTMLElement).closest(".compare-handle")) return;
-          drag.current = { x: event.clientX, y: event.clientY, px: panX, py: panY };
+          if (maskEditing || (event.target as HTMLElement).closest(".compare-handle")) return;
+          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
           event.currentTarget.setPointerCapture(event.pointerId);
+          if (pointers.current.size === 2) {
+            const [a, b] = [...pointers.current.values()];
+            pinch.current = { distance: Math.hypot(a.x - b.x, a.y - b.y), zoom, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, px: panX, py: panY }; drag.current = null;
+          } else drag.current = { x: event.clientX, y: event.clientY, px: panX, py: panY };
         }}
         onPointerMove={(event) => {
-          if (!drag.current) return;
-          setPan(
-            drag.current.px + event.clientX - drag.current.x,
-            drag.current.py + event.clientY - drag.current.y,
-          );
+          if (!pointers.current.has(event.pointerId)) return;
+          pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+          if (pointers.current.size === 2 && pinch.current) {
+            const [a,b] = [...pointers.current.values()]; const p = pinch.current;
+            setZoom(p.zoom * Math.hypot(a.x-b.x, a.y-b.y) / Math.max(1, p.distance));
+            setPan(p.px + (a.x+b.x)/2-p.x, p.py + (a.y+b.y)/2-p.y); return;
+          }
+          if (drag.current) setPan(drag.current.px + event.clientX - drag.current.x, drag.current.py + event.clientY - drag.current.y);
         }}
-        onPointerCancel={() => { drag.current = null; }}
-        onPointerUp={() => {
-          drag.current = null;
-        }}
+        onPointerCancel={(event) => { pointers.current.delete(event.pointerId); drag.current = null; pinch.current = null; }}
+        onPointerUp={(event) => { pointers.current.delete(event.pointerId); drag.current = null; pinch.current = null; }}
+
       >
         {compareMode === "grid" ? (
           <div className="four-grid-compare" style={{ transform: `translate(${panX}px, ${panY}px) scale(${zoom})` }}>
@@ -178,6 +175,7 @@ export function CanvasStage() {
               style={showOriginal || compareMode === "blink" ? undefined : editedClip}
               aria-label="Edited image preview"
             />
+            {maskEditing && <MaskCanvas />}
             {(compareMode === "vertical" || compareMode === "horizontal") && !showOriginal && (
               <div
                 role="slider"
@@ -213,24 +211,24 @@ export function CanvasStage() {
                 <span><Columns2 size={12} /></span>
               </div>
             )}
-            {compareMode !== "off" && compareMode !== "blink" && <><span className="compare-label before">Before</span><span className="compare-label after">After</span></>}
+            {compareMode !== "off" && compareMode !== "blink" && <><span className="compare-label before"> <T text={"Before"} /> </span><span className="compare-label after"> <T text={"After"} /> </span></>}
           </div>
         )}
 
         {gridVisible && <div className="canvas-grid-overlay" aria-hidden="true" />}
         {guidesVisible && <div className="canvas-guides-overlay" aria-hidden="true"><span /><span /></div>}
         {safeZonesVisible && <div className="safe-zone-overlay" aria-label="Safe zones" />}
-        {clippingVisible && <div className="clipping-overlay" aria-label="Clipping warning preview"><span>Clipping preview</span></div>}
+        {clippingVisible && <div className="clipping-overlay" aria-label="Clipping warning preview"><span> <T text={"Clipping preview"} /> </span></div>}
         {maskOverlayVisible && <div className="mask-preview-overlay" aria-label="Local radial mask preview"><span>Radial mask preview</span></div>}
         {renderError && <span className="render-badge" role="alert">{renderError}</span>}
-        {rendering && <span className="render-badge">Rendering shared preview…</span>}
+        {rendering && <span className="render-badge"> <T text={"Rendering shared preview…"} /> </span>}
       </div>
 
       <div className="canvas-toolbar" role="toolbar" aria-label="Canvas tools">
         <button onClick={() => setZoom(zoom / 1.25)} aria-label="Zoom out" title="Zoom out"><Minus size={15} /></button>
         <output>{Math.round(zoom * 100)}%</output>
         <button onClick={() => setZoom(zoom * 1.25)} aria-label="Zoom in" title="Zoom in"><Plus size={15} /></button>
-        <button onClick={() => { setZoom(1); setPan(0, 0); }} aria-label="Fit image" title="Fit"><Focus size={15} /><span>Fit</span></button>
+        <button onClick={() => { setZoom(1); setPan(0, 0); }} aria-label="Fit image" title="Fit"><Focus size={15} /><span> <T text={"Fit"} /> </span></button>
         <button onClick={() => { setZoom(1); setPan(0, 0); }} aria-label="View at 100 percent" title="100%">100%</button>
         <button onClick={() => setPanEnabled(!panEnabled)} aria-pressed={panEnabled} className={spaceHeld || panEnabled ? "active" : ""} aria-label="Pan tool" title="Hold Space to pan"><Move size={15} /></button>
         <span className="toolbar-separator" />

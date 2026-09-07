@@ -10,10 +10,24 @@ import type {
   EditorSnapshot,
   Geometry,
   ImportedImage,
+  EditorLayer,
 } from "./types";
 
 type EditorState = {
   image: ImportedImage | null;
+  layers: EditorLayer[];
+  activeLayerId: string | null;
+  maskEditing: boolean;
+  brushRadius: number;
+  brushErase: boolean;
+  setActiveLayer: (id: string | null) => void;
+  setMaskEditing: (value: boolean) => void;
+  setBrush: (radius: number, erase: boolean) => void;
+  addLayer: (layer: EditorLayer) => void;
+  updateLayer: (id: string, patch: Partial<EditorLayer>) => void;
+  removeLayer: (id: string) => void;
+  moveLayer: (id: string, direction: number) => void;
+  restoreSnapshot: (snapshot: EditorSnapshot) => void;
   currentProjectId: string | null;
   adjustments: Adjustments;
   geometry: Geometry;
@@ -30,7 +44,7 @@ type EditorState = {
   previewAdjustment: (key: AdjustmentKey, value: number) => void;
   commitAdjustments: () => void;
   applyAdjustments: (values: Partial<Adjustments>, presetId?: string | null) => void;
-  loadRecipe: (adjustments: Adjustments, geometry: Geometry) => void;
+  loadRecipe: (adjustments: Adjustments, geometry: Geometry, layers?: EditorLayer[]) => void;
   undo: () => void;
   redo: () => void;
   reset: () => void;
@@ -60,13 +74,16 @@ const cloneGeometry = (value: Partial<Geometry>): Geometry => ({
 const cloneSnapshot = (value: EditorSnapshot): EditorSnapshot => ({
   adjustments: cloneAdjustments(value.adjustments),
   geometry: cloneGeometry(value.geometry),
+  layers: structuredClone(value.layers ?? []),
 });
 const makeSnapshot = (
   adjustments: Partial<Adjustments>,
   geometry: Partial<Geometry>,
+  layers: EditorLayer[] = [],
 ): EditorSnapshot => ({
   adjustments: cloneAdjustments(adjustments),
   geometry: cloneGeometry(geometry),
+  layers: structuredClone(layers),
 });
 const sameSnapshot = (a: EditorSnapshot, b: EditorSnapshot) =>
   JSON.stringify(a) === JSON.stringify(b);
@@ -78,7 +95,7 @@ export const useEditorStore = create<EditorState>()(
     (set, get) => {
       const commitGeometry = (nextGeometry: Geometry) => {
         const state = get();
-        const next = makeSnapshot(state.adjustments, nextGeometry);
+        const next = makeSnapshot(state.adjustments, nextGeometry, state.layers);
         if (sameSnapshot(next, state.committed)) return;
         set({
           geometry: cloneGeometry(nextGeometry),
@@ -89,7 +106,21 @@ export const useEditorStore = create<EditorState>()(
         });
       };
 
+      const commitLayers = (layers: EditorLayer[]) => {
+        const state = get();
+        const next = makeSnapshot(state.adjustments, state.geometry, layers);
+        set({ layers, committed: next, past: [...state.past, cloneSnapshot(state.committed)].slice(-40), future: [] });
+      };
       return {
+        layers: [], activeLayerId: null, maskEditing: false, brushRadius: .04, brushErase: false,
+        setActiveLayer: (activeLayerId) => set({ activeLayerId }),
+        setMaskEditing: (maskEditing) => set({ maskEditing }),
+        setBrush: (brushRadius, brushErase) => set({ brushRadius, brushErase }),
+        addLayer: (layer) => { const state = get(); if (state.layers.length >= 20) throw new Error("Maximum 20 layers per project"); commitLayers([...state.layers, layer]); set({ activeLayerId: layer.id }); },
+        updateLayer: (id, patch) => commitLayers(get().layers.map((layer) => layer.id === id ? { ...layer, ...patch, id } : layer)),
+        removeLayer: (id) => { commitLayers(get().layers.filter((layer) => layer.id !== id)); if (get().activeLayerId === id) set({ activeLayerId: null, maskEditing: false }); },
+        moveLayer: (id, direction) => { const layers = [...get().layers]; const index = layers.findIndex((l) => l.id === id); const next = Math.max(0, Math.min(layers.length - 1, index + direction)); if (index < 0 || next === index) return; [layers[index], layers[next]] = [layers[next], layers[index]]; commitLayers(layers); },
+        restoreSnapshot: (snapshot) => { const state = get(); const next = cloneSnapshot(snapshot); set({ adjustments: next.adjustments, geometry: next.geometry, layers: next.layers ?? [], committed: next, past: [...state.past, cloneSnapshot(state.committed)].slice(-40), future: [], activePreset: null }); },
         image: null,
         currentProjectId: null,
         adjustments: cloneAdjustments(DEFAULT_ADJUSTMENTS),
@@ -106,6 +137,7 @@ export const useEditorStore = create<EditorState>()(
         setImage: (image) =>
           set({
             image,
+            layers: [], activeLayerId: null, maskEditing: false, showOriginal: false,
             currentProjectId: null,
             adjustments: cloneAdjustments(DEFAULT_ADJUSTMENTS),
             geometry: cloneGeometry(DEFAULT_GEOMETRY),
@@ -125,7 +157,7 @@ export const useEditorStore = create<EditorState>()(
           })),
         commitAdjustments: () => {
           const state = get();
-          const next = makeSnapshot(state.adjustments, state.geometry);
+          const next = makeSnapshot(state.adjustments, state.geometry, state.layers);
           if (sameSnapshot(next, state.committed)) return;
           set({
             committed: next,
@@ -136,7 +168,7 @@ export const useEditorStore = create<EditorState>()(
         applyAdjustments: (values, presetId = null) => {
           const state = get();
           const nextAdjustments = cloneAdjustments({ ...state.adjustments, ...values });
-          const next = makeSnapshot(nextAdjustments, state.geometry);
+          const next = makeSnapshot(nextAdjustments, state.geometry, state.layers);
           if (sameSnapshot(next, state.committed)) return;
           set({
             adjustments: nextAdjustments,
@@ -146,13 +178,16 @@ export const useEditorStore = create<EditorState>()(
             activePreset: presetId,
           });
         },
-        loadRecipe: (adjustments, geometry) => {
+        loadRecipe: (adjustments, geometry, layers = []) => {
           const normalizedAdjustments = cloneAdjustments(adjustments);
           const normalizedGeometry = cloneGeometry(geometry);
-          const snapshot = makeSnapshot(normalizedAdjustments, normalizedGeometry);
+          const snapshot = makeSnapshot(normalizedAdjustments, normalizedGeometry, layers);
           set({
             adjustments: normalizedAdjustments,
             geometry: normalizedGeometry,
+            layers: structuredClone(layers),
+            activeLayerId: layers.at(-1)?.id ?? null,
+            maskEditing: false,
             committed: snapshot,
             past: [],
             future: [],
@@ -168,6 +203,7 @@ export const useEditorStore = create<EditorState>()(
               future: [cloneSnapshot(state.committed), ...state.future].slice(0, 100),
               adjustments: cloneAdjustments(previous.adjustments),
               geometry: cloneGeometry(previous.geometry),
+              layers: structuredClone(previous.layers ?? []),
               committed: cloneSnapshot(previous),
               activePreset: null,
             };
@@ -181,6 +217,7 @@ export const useEditorStore = create<EditorState>()(
               future: state.future.slice(1),
               adjustments: cloneAdjustments(next.adjustments),
               geometry: cloneGeometry(next.geometry),
+              layers: structuredClone(next.layers ?? []),
               committed: cloneSnapshot(next),
               activePreset: null,
             };
@@ -192,6 +229,7 @@ export const useEditorStore = create<EditorState>()(
           set({
             adjustments: cloneAdjustments(DEFAULT_ADJUSTMENTS),
             geometry: cloneGeometry(DEFAULT_GEOMETRY),
+            layers: [],
             committed: next,
             past: [...state.past, cloneSnapshot(state.committed)].slice(-100),
             future: [],
@@ -201,7 +239,7 @@ export const useEditorStore = create<EditorState>()(
         resetAdjustment: (key) => {
           const state = get();
           const adjustments = { ...state.adjustments, [key]: DEFAULT_ADJUSTMENTS[key] };
-          const next = makeSnapshot(adjustments, state.geometry);
+          const next = makeSnapshot(adjustments, state.geometry, state.layers);
           if (sameSnapshot(next, state.committed)) return;
           set({
             adjustments,
@@ -215,7 +253,7 @@ export const useEditorStore = create<EditorState>()(
           const state = get();
           const adjustments = { ...state.adjustments };
           for (const key of keys) adjustments[key] = DEFAULT_ADJUSTMENTS[key];
-          const next = makeSnapshot(adjustments, state.geometry);
+          const next = makeSnapshot(adjustments, state.geometry, state.layers);
           if (sameSnapshot(next, state.committed)) return;
           set({
             adjustments,
@@ -283,24 +321,17 @@ export const useEditorStore = create<EditorState>()(
     },
     {
       name: "lumaforge-editor-v4",
-      partialize: (state) => ({
-        adjustments: state.committed.adjustments,
-        geometry: state.committed.geometry,
-        committed: state.committed,
-        past: state.past,
-        future: state.future,
-        activePreset: state.activePreset,
-        currentProjectId: state.currentProjectId,
-      }),
+      // Image recipes and layers live in IndexedDB drafts, not synchronous localStorage.
+      partialize: (state) => ({ currentProjectId: state.currentProjectId }),
       merge: (persisted, current) => {
         const stored = persisted as Partial<EditorState>;
         const adjustments = cloneAdjustments(stored.adjustments ?? current.adjustments);
         const geometry = cloneGeometry(stored.geometry ?? current.geometry);
         const committed = stored.committed
-          ? makeSnapshot(stored.committed.adjustments, stored.committed.geometry)
+          ? makeSnapshot(stored.committed.adjustments, stored.committed.geometry, stored.committed.layers)
           : makeSnapshot(adjustments, geometry);
         const normalizeHistory = (items?: EditorSnapshot[]) =>
-          (items ?? []).map((item) => makeSnapshot(item.adjustments, item.geometry)).slice(-100);
+          (items ?? []).map((item) => makeSnapshot(item.adjustments, item.geometry, item.layers)).slice(-100);
         return {
           ...current,
           ...stored,

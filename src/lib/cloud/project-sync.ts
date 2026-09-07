@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
 import type { StoredProject } from "@/features/editor/types";
+import { layersSchema } from "@/features/projects/backup";
 import { listProjects, saveProject } from "@/lib/idb";
 
 const BUCKET = "lumaforge-assets";
@@ -58,8 +59,6 @@ export type SyncResult = {
   errors: Array<{ localId: string; message: string }>;
 };
 
-type SyncBaseline = Record<string, string>;
-
 function toMillis(value?: string | null) {
   const parsed = value ? Date.parse(value) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : 0;
@@ -86,21 +85,6 @@ export function resolveSyncDecision(
   if (localChanged) return "push";
   if (cloudChanged) return "pull";
   return "equal";
-}
-
-function readBaseline(): SyncBaseline {
-  if (typeof window === "undefined") return {};
-  try {
-    const value = window.localStorage.getItem(BASELINE_KEY);
-    return value ? (JSON.parse(value) as SyncBaseline) : {};
-  } catch {
-    return {};
-  }
-}
-
-function writeBaseline(value: SyncBaseline) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(BASELINE_KEY, JSON.stringify(value));
 }
 
 function sanitizePathSegment(value: string) {
@@ -136,104 +120,42 @@ export async function listCloudProjects(
 }
 
 export async function pushLocalProject(
-  client: SupabaseClient,
-  userId: string,
-  project: StoredProject,
+  client: SupabaseClient, userId: string, project: StoredProject, expectedVersion?: number,
 ): Promise<CloudProjectRow> {
-  const { data: projectRow, error: projectError } = await client
-    .from("projects")
-    .upsert(
-      {
-        owner_id: userId,
-        local_id: project.id,
-        name: project.name,
-        status: project.archivedAt ? "archived" : "active",
-        metadata: projectMetadata(project),
-        client_updated_at: project.updatedAt,
-        archived_at: project.archivedAt ?? null,
-      },
-      { onConflict: "owner_id,local_id" },
-    )
-    .select("id,owner_id,local_id,name,status,metadata,latest_version_id,server_version,client_updated_at,created_at,updated_at")
-    .single();
-  if (projectError) throw projectError;
-  const cloud = projectRow as CloudProjectRow;
-
-  const objectPath = `${userId}/${cloud.id}/original/${sanitizePathSegment(project.imageName)}`;
-  const { error: uploadError } = await client.storage
-    .from(BUCKET)
-    .upload(objectPath, project.imageBlob, {
-      contentType: project.imageType,
-      cacheControl: "3600",
-      upsert: true,
-    });
-  if (uploadError) throw uploadError;
-
-  const { error: assetError } = await client.from("assets").upsert(
-    {
-      owner_id: userId,
-      project_id: cloud.id,
-      local_id: `original:${project.id}`,
-      kind: "original",
-      bucket_id: BUCKET,
-      object_path: objectPath,
-      original_name: project.imageName,
-      mime_type: project.imageType,
-      size_bytes: project.imageBlob.size,
-      width: project.width,
-      height: project.height,
-      metadata: { localProjectId: project.id },
-    },
-    { onConflict: "owner_id,project_id,local_id" },
-  );
-  if (assetError) throw assetError;
-
-  const { data: version, error: versionError } = await client
-    .from("edit_versions")
-    .upsert(
-      {
-        owner_id: userId,
-        project_id: cloud.id,
-        local_id: `current:${project.id}`,
-        name: "Current synced edit",
-        adjustments: project.adjustments,
-        geometry: project.geometry,
-      },
-      { onConflict: "owner_id,project_id,local_id" },
-    )
-    .select("id")
-    .single();
-  if (versionError) throw versionError;
-
-  const { data: updated, error: updateError } = await client
-    .from("projects")
-    .update({
-      latest_version_id: version.id,
-      client_updated_at: project.updatedAt,
-      server_version: Math.max(1, Number(cloud.server_version ?? 1) + 1),
-    })
-    .eq("id", cloud.id)
-    .eq("owner_id", userId)
-    .select("id,owner_id,local_id,name,status,metadata,latest_version_id,server_version,client_updated_at,created_at,updated_at")
-    .single();
-  if (updateError) throw updateError;
-  return updated as CloudProjectRow;
+  const fields = "id,owner_id,local_id,name,status,metadata,latest_version_id,server_version,client_updated_at,created_at,updated_at";
+  const existing = await client.from("projects").select(fields).eq("owner_id", userId).eq("local_id", project.id).maybeSingle();
+  if (existing.error) throw existing.error;
+  let cloud = existing.data as CloudProjectRow | null;
+  if (cloud && expectedVersion !== undefined && cloud.server_version !== expectedVersion) throw new Error("Cloud changed again. Refresh before resolving this conflict.");
+  if (!cloud) {
+    const created = await client.from("projects").insert({ owner_id: userId, local_id: project.id, name: project.name, status: "active", metadata: projectMetadata(project), client_updated_at: project.updatedAt }).select(fields).single();
+    if (created.error) throw created.error;
+    cloud = created.data as CloudProjectRow;
+  }
+  // Assets and versions are immutable. Only publish the new pointer after all uploads finish.
+  const revision = crypto.randomUUID();
+  const objectPath = `${userId}/${cloud.id}/original/${revision}-${sanitizePathSegment(project.imageName)}`;
+  const upload = await client.storage.from(BUCKET).upload(objectPath, project.imageBlob, { contentType: project.imageType, upsert: false });
+  if (upload.error) throw upload.error;
+  const asset = await client.from("assets").insert({ owner_id: userId, project_id: cloud.id, local_id: `original:${revision}`, kind: "original", bucket_id: BUCKET, object_path: objectPath, original_name: project.imageName, mime_type: project.imageType, size_bytes: project.imageBlob.size, width: project.width, height: project.height });
+  if (asset.error) throw asset.error;
+  const version = await client.from("edit_versions").insert({ owner_id: userId, project_id: cloud.id, local_id: revision, name: "Synced edit", adjustments: project.adjustments, geometry: { ...project.geometry, layers: project.layers ?? [] } }).select("id").single();
+  if (version.error) throw version.error;
+  const result = await client.from("projects").update({ name: project.name, status: project.archivedAt ? "archived" : "active", archived_at: project.archivedAt ?? null, metadata: { ...projectMetadata(project), originalAssetPath: objectPath }, latest_version_id: version.data.id, client_updated_at: project.updatedAt, server_version: cloud.server_version + 1 }).eq("id",cloud.id).eq("owner_id",userId).eq("server_version",cloud.server_version).select(fields).maybeSingle();
+  if (result.error) throw result.error;
+  if (!result.data) throw new Error("Another device changed this project. Your upload is preserved; refresh to resolve the conflict.");
+  return result.data as CloudProjectRow;
 }
 
 export async function pullCloudProject(
   client: SupabaseClient,
   userId: string,
   cloud: CloudProjectRow,
+  localIdOverride?: string,
 ): Promise<StoredProject> {
-  const { data: asset, error: assetError } = await client
-    .from("assets")
-    .select("object_path,original_name,mime_type,size_bytes,width,height")
-    .eq("project_id", cloud.id)
-    .eq("owner_id", userId)
-    .eq("kind", "original")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  let query = client.from("assets").select("object_path,original_name,mime_type,size_bytes,width,height").eq("project_id",cloud.id).eq("owner_id",userId).eq("kind","original");
+  if (typeof cloud.metadata?.originalAssetPath === "string") query = query.eq("object_path",cloud.metadata.originalAssetPath);
+  const { data: asset, error: assetError } = await query.order("created_at", { ascending: true }).limit(1).maybeSingle();
   if (assetError) throw assetError;
   if (!asset) throw new Error(`Cloud project “${cloud.name}” has no original asset.`);
 
@@ -257,7 +179,7 @@ export async function pullCloudProject(
   const metadata = cloud.metadata ?? {};
   const typedAsset = asset as CloudAssetRow;
   const project: StoredProject = {
-    id: cloud.local_id ?? cloud.id,
+    id: localIdOverride ?? cloud.local_id ?? cloud.id,
     name: cloud.name,
     createdAt: cloud.created_at,
     updatedAt: cloud.updated_at,
@@ -270,87 +192,54 @@ export async function pullCloudProject(
       ...DEFAULT_ADJUSTMENTS,
       ...(version?.adjustments ?? {}),
     },
-    geometry: {
-      ...DEFAULT_GEOMETRY,
-      ...(version?.geometry ?? {}),
-    },
+    geometry: Object.fromEntries(Object.entries(DEFAULT_GEOMETRY).map(([key,value]) => [key, version?.geometry?.[key] ?? value])) as StoredProject["geometry"],
+    layers: layersSchema.parse(version?.geometry?.layers ?? []),
     archivedAt: cloud.status === "archived" ? cloud.updated_at : undefined,
   };
   await saveProject(project);
   return project;
 }
 
-export async function syncAllProjects(
-  client: SupabaseClient,
-  userId: string,
-  onProgress?: (progress: SyncProgress) => void,
-): Promise<SyncResult> {
-  const [localProjects, cloudProjects] = await Promise.all([
-    listProjects({ includeArchived: true }),
-    listCloudProjects(client),
-  ]);
-  const localById = new Map(localProjects.map((project) => [project.id, project]));
-  const cloudById = new Map(
-    cloudProjects
-      .filter((project) => project.local_id)
-      .map((project) => [project.local_id as string, project]),
-  );
-  const ids = Array.from(new Set([...localById.keys(), ...cloudById.keys()]));
-  const baseline = readBaseline();
-  const result: SyncResult = { pushed: 0, pulled: 0, equal: 0, conflicts: [], errors: [] };
-
-  for (const [index, localId] of ids.entries()) {
-    const local = localById.get(localId);
-    const cloud = cloudById.get(localId);
-    onProgress?.({ completed: index, total: ids.length, message: `Checking ${local?.name ?? cloud?.name ?? localId}` });
-    try {
-      if (local && !cloud) {
-        await pushLocalProject(client, userId, local);
-        result.pushed += 1;
-        baseline[localId] = new Date().toISOString();
-        continue;
-      }
-      if (!local && cloud) {
-        await pullCloudProject(client, userId, cloud);
-        result.pulled += 1;
-        baseline[localId] = new Date().toISOString();
-        continue;
-      }
-      if (!local || !cloud) continue;
-
-      const decision = resolveSyncDecision(local.updatedAt, cloud.updated_at, baseline[localId]);
-      if (decision === "push") {
-        await pushLocalProject(client, userId, local);
-        result.pushed += 1;
-        baseline[localId] = new Date().toISOString();
-      } else if (decision === "pull") {
-        await pullCloudProject(client, userId, cloud);
-        result.pulled += 1;
-        baseline[localId] = new Date().toISOString();
-      } else if (decision === "conflict") {
-        result.conflicts.push({
-          localId,
-          local,
-          cloud,
-          reason: "Local and cloud copies changed after the last successful sync.",
-        });
-      } else {
-        result.equal += 1;
-      }
-    } catch (error) {
-      result.errors.push({ localId, message: errorMessage(error) });
-    }
-  }
-
-  writeBaseline(baseline);
-  onProgress?.({ completed: ids.length, total: ids.length, message: "Synchronization complete" });
-  return result;
+type RevisionBaseline = Record<string, { local: string; cloud: number }>;
+function baselineFor(userId: string): RevisionBaseline { try { return JSON.parse(localStorage.getItem(`${BASELINE_KEY}:${userId}:revisions`) ?? "{}"); } catch { return {}; } }
+async function fingerprint(project: StoredProject) {
+  const image = new Uint8Array(await project.imageBlob.arrayBuffer());
+  const bytes = await crypto.subtle.digest("SHA-256", image);
+  const hash = [...new Uint8Array(bytes)].map((n) => n.toString(16).padStart(2,"0")).join("");
+  const recipe = new TextEncoder().encode(JSON.stringify({ hash, name: project.name, adjustments: project.adjustments, geometry: project.geometry, layers: project.layers ?? [], archived: project.archivedAt ?? null }));
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-256", recipe))].map((n) => n.toString(16).padStart(2,"0")).join("");
 }
-
-export function markConflictResolved(localId: string) {
-  const baseline = readBaseline();
-  baseline[localId] = new Date().toISOString();
-  writeBaseline(baseline);
+export function decideRevision(local: string, cloud: number, baseline?: { local: string; cloud: number }): SyncDecision {
+  if (!baseline) return "conflict";
+  const a = local !== baseline.local, b = cloud !== baseline.cloud;
+  return a && b ? "conflict" : a ? "push" : b ? "pull" : "equal";
+}
+export async function markConflictResolved(localId: string, userId: string, local: StoredProject, cloud: CloudProjectRow) {
+  const baseline = baselineFor(userId); baseline[localId] = { local: await fingerprint(local), cloud: cloud.server_version };
+  localStorage.setItem(`${BASELINE_KEY}:${userId}:revisions`,JSON.stringify(baseline));
+}
+export async function syncAllProjects(client: SupabaseClient, userId: string, onProgress?: (progress: SyncProgress) => void): Promise<SyncResult> {
+  const [locals, clouds] = await Promise.all([listProjects({ includeArchived: true }),listCloudProjects(client)]);
+  const localMap = new Map(locals.map((p) => [p.id,p]));
+  const cloudMap = new Map(clouds.map((p) => [p.local_id ?? p.id,p]));
+  const ids = [...new Set([...localMap.keys(),...cloudMap.keys()])];
+  const baseline = baselineFor(userId);
+  const result: SyncResult = { pushed:0,pulled:0,equal:0,conflicts:[],errors:[] };
+  for (const [index,id] of ids.entries()) {
+    const local=localMap.get(id), cloud=cloudMap.get(id);
+    onProgress?.({ completed:index,total:ids.length,message:`Checking ${local?.name ?? cloud?.name}` });
+    try {
+      if (local && !cloud) { const pushed=await pushLocalProject(client,userId,local); await markConflictResolved(id,userId,local,pushed); result.pushed++; continue; }
+      if (cloud && !local) { const pulled=await pullCloudProject(client,userId,cloud); await markConflictResolved(id,userId,pulled,cloud); result.pulled++; continue; }
+      if (!cloud || !local) continue;
+      const decision=decideRevision(await fingerprint(local),cloud.server_version,baseline[id]);
+      if (decision === "push") { const pushed=await pushLocalProject(client,userId,local,cloud.server_version); await markConflictResolved(id,userId,local,pushed); result.pushed++; }
+      else if (decision === "pull") { const pulled=await pullCloudProject(client,userId,cloud); await markConflictResolved(id,userId,pulled,cloud); result.pulled++; }
+      else if (decision === "conflict") result.conflicts.push({ localId:id,local,cloud,reason:"Both copies need review. Choose a version or keep both." });
+      else result.equal++;
+    } catch (e) { result.errors.push({ localId:id,message:errorMessage(e) }); }
+  }
+  onProgress?.({ completed:ids.length,total:ids.length,message:"Synchronization complete" }); return result;
 }
 
 export async function getCloudStorageUsage(client: SupabaseClient) {

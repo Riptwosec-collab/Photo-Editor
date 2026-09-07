@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -99,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="sidebar-brand-row">
           <Link className="brand" href="/" title="LumaForge AI Studio">
             <span className="brand-mark"><Layers3 size={17} /></span>
-            <span className="brand-copy"><strong>LumaForge</strong><small>AI Studio</small></span>
+            <span className="brand-copy"><strong>LumaForge</strong><small> <T text={"AI Studio"} /> </small></span>
           </Link>
           <button
             type="button"
@@ -111,7 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <button className="studio-menu-trigger" onClick={openMenu} title="Search menus (Ctrl/⌘ K)"><Search size={16} /><span>Search menus</span></button>
+        <button className="studio-menu-trigger" onClick={openMenu} title="Search menus (Ctrl/⌘ K)"><Search size={16} /><span> <T text={"Search menus"} /> </span></button>
         <nav className="desktop-navigation">
           {groups.map((group) => (
             <div className="nav-group" key={group.label}>
@@ -125,7 +127,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   aria-current={isActive(href) ? "page" : undefined}
                 >
                   <Icon size={18} />
-                  <span>{label}</span>
+                  <span><T text={label} /></span>
                 </Link>
               ))}
             </div>
@@ -134,23 +136,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="sidebar-account-stack">
           <div className="resource-card" title="Projects are stored in this browser">
-            <div className="resource-head"><HardDrive size={14} /><span>Device storage</span><b>LOCAL</b></div>
+            <div className="resource-head"><HardDrive size={14} /><span> <T text={"Device storage"} /> </span><b>LOCAL</b></div>
           </div>
           <Link className="account-card" href="/auth">
             <span className="account-avatar">LF</span>
-            <span className="account-copy"><strong>Local Creator</strong><small>Projects on this device</small></span>
+            <span className="account-copy"><strong> <T text={"Local Creator"} /> </strong><small> <T text={"Projects on this device"} /> </small></span>
             <span className="sync-indicator" aria-label="Local workspace" />
           </Link>
         </div>
       </aside>
 
-      <a className="skip-link" href="#workspace-content">Skip to content</a>
+      <a className="skip-link" href="#workspace-content"> <T text={"Skip to content"} /> </a>
       <section id="workspace-content" className="app-content">{children}</section>
 
       <dialog ref={menu} className="studio-command-menu" aria-labelledby="menu-title" onClick={(event) => { if (event.target === event.currentTarget) menu.current?.close(); }}>
-        <div className="command-heading"><h2 id="menu-title">Explore your studio</h2><button aria-label="Close menu" onClick={() => menu.current?.close()}><X size={20} /></button></div>
+        <div className="command-heading"><h2 id="menu-title"> <T text={"Explore your studio"} /> </h2><button aria-label="Close menu" onClick={() => menu.current?.close()}><X size={20} /></button></div>
         <label className="command-search"><Search size={18} /><input autoFocus placeholder="Search tools and pages…" aria-label="Search menus" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
-        <div className="command-results">{groups.flatMap((group) => group.items).filter(([, label]) => label.toLowerCase().includes(query.toLowerCase())).map(([href, label, Icon]) => <Link href={href} key={href} onClick={() => menu.current?.close()}><Icon size={19} /><span>{label}</span><small>Open →</small></Link>)}{!groups.flatMap((group) => group.items).some(([, label]) => label.toLowerCase().includes(query.toLowerCase())) && <p>No matching tools. Try “Editor” or “Cloud”.</p>}<Link href="/auth" onClick={() => menu.current?.close()}><UserRound size={19} /><span>Account / Sign in</span></Link></div>
+        <div className="command-results">{groups.flatMap((group) => group.items).filter(([, label]) => label.toLowerCase().includes(query.toLowerCase())).map(([href, label, Icon]) => <Link href={href} key={href} onClick={() => menu.current?.close()}><Icon size={19} /><span><T text={label} /></span><small> <T text={"Open →"} /> </small></Link>)}{!groups.flatMap((group) => group.items).some(([, label]) => label.toLowerCase().includes(query.toLowerCase())) && <p>No matching tools. Try “Editor” or “Cloud”.</p>}<Link href="/auth" onClick={() => menu.current?.close()}><UserRound size={19} /><span> <T text={"Account / Sign in"} /> </span></Link></div>
       </dialog>
       <nav className="mobile-navigation" aria-label="Mobile navigation">
         {mobileItems.slice(0, 4).map(([href, label, Icon]) => (
@@ -161,10 +163,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-current={isActive(href) ? "page" : undefined}
           >
             <Icon size={19} />
-            <span>{label}</span>
+            <span><T text={label} /></span>
           </Link>
         ))}
-        <button onClick={openMenu} aria-label="All menus"><Search size={19} /><span>More</span></button>
+        <button onClick={openMenu} aria-label="All menus"><Search size={19} /><span> <T text={"More"} /> </span></button>
       </nav>
     </div>
   );

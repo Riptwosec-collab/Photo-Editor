@@ -76,7 +76,16 @@ export type Geometry = {
   perspectiveY: number;
 };
 
+export type MaskStroke = { points: Array<{ x: number; y: number }>; radius: number; erase?: boolean };
+export type LayerMask = { kind: "all" | "radial" | "linear" | "brush"; x: number; y: number; radius: number; feather: number; invert: boolean; strokes: MaskStroke[] };
+export type EditorLayer = {
+  id: string; name: string; kind: "adjustment" | "text" | "raster"; visible: boolean; opacity: number;
+  adjustments: Partial<Adjustments>; mask: LayerMask;
+  text?: string; color?: string; fontSize?: number; x?: number; y?: number; dataUrl?: string;
+};
+
 export type EditorSnapshot = {
+  layers?: EditorLayer[];
   adjustments: Adjustments;
   geometry: Geometry;
 };
@@ -112,6 +121,7 @@ export type AiEditPlan = {
 };
 
 export type StoredProject = {
+  layers?: EditorLayer[];
   id: string;
   name: string;
   createdAt: string;
@@ -127,6 +137,8 @@ export type StoredProject = {
 };
 
 export type StoredVersion = {
+  layers?: EditorLayer[];
+  thumbnail?: string;
   id: string;
   projectId: string;
   name: string;
@@ -152,6 +164,8 @@ export type ExportRecord = {
 };
 
 export type UserPreset = {
+  favorite?: boolean;
+  folder?: string;
   id: string;
   name: string;
   description: string;

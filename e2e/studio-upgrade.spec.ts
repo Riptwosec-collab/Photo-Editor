@@ -40,3 +40,10 @@ test("legacy batch menu opens the functional batch workspace", async ({ page }) 
   await expect(page).toHaveURL(/\/batch$/);
   await expect(page.locator('input[type="file"]')).toHaveCount(1);
 });
+
+
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("lumaforge-preferences-v1")) localStorage.setItem("lumaforge-preferences-v1", JSON.stringify({ state: { language: "en" }, version: 0 }));
+  });
+});

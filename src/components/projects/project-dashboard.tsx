@@ -1,6 +1,8 @@
 "use client";
+import { T } from "@/features/i18n/text";
 
-import Image from "next/image";
+
+import { RecipeThumbnail } from "../editor/recipe-thumbnail";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -103,28 +105,22 @@ export function ProjectDashboard({ mode = "projects" }: { mode?: "projects" | "g
               Cloud sync is not presented as active.
             </p>
           </div>
-          <Link className="button primary" href="/editor"><ImagePlus size={17} /> New edit</Link>
+          <Link className="button primary" href="/editor"><ImagePlus size={17} /> <T text={"New edit"} /> </Link>
         </header>
 
         <div className="project-toolbar">
           <label className="search-field"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search projects" /></label>
-          <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> Include archived</label>
+          <label className="archive-toggle"><input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> <T text={"Include archived"} /> </label>
         </div>
 
-        {status && <div className="empty-state"><FolderOpen /><h2>{status}</h2><p>Open the editor, import a supported image and choose Save project.</p><Link className="button primary" href="/editor">Open editor</Link></div>}
+        {status && <div className="empty-state"><FolderOpen /><h2>{status}</h2><p>Open the editor, import a supported image and choose Save project.</p><Link className="button primary" href="/editor"> <T text={"Open editor"} /> </Link></div>}
 
         <section className={mode === "gallery" ? "project-grid gallery-grid" : "project-grid"}>
           {filtered.map((project) => (
             <article className="project-card" key={project.id}>
               <Link className="project-preview" href={`/editor?project=${project.id}`}>
-                <Image
-                  src={project.previewUrl}
-                  alt={`Preview of ${project.name}`}
-                  width={project.width}
-                  height={project.height}
-                  unoptimized
-                />
-                {project.archivedAt && <span className="archived-badge">Archived</span>}
+                <RecipeThumbnail url={project.previewUrl} adjustments={project.adjustments} geometry={project.geometry} layers={project.layers} />
+                {project.archivedAt && <span className="archived-badge"> <T text={"Archived"} /> </span>}
               </Link>
               <div className="project-card-body">
                 <div><h2>{project.name}</h2><p>{project.width} × {project.height} · {new Date(project.updatedAt).toLocaleString()}</p></div>

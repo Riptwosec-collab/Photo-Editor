@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -19,6 +21,7 @@ import { useEditorStore } from "@/features/editor/store";
 import type { Adjustments, AiEditPlan, AdjustmentKey } from "@/features/editor/types";
 import { useStudioStore } from "@/features/studio/store";
 import { createLocalEditPlan } from "@/features/ai/local-provider";
+import { CloudAiPanel } from "./cloud-ai-panel";
 import { PixelAnalysisPanel } from "./pixel-analysis-panel";
 import { ProgressBar } from "@/components/ui/editor-controls";
 
@@ -194,7 +197,7 @@ export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => 
   return (
     <aside className="ai-assistant-panel" aria-label="AI Assistant">
       <header className="assistant-header">
-        <div><span className="assistant-status-dot" /><div><strong>AI Assistant</strong><small>Local planning · Cloud provider offline</small></div></div>
+        <div><span className="assistant-status-dot" /><div><strong> <T text={"AI Assistant"} /> </strong><small> <T text={"Local planning · Cloud provider offline"} /> </small></div></div>
         <div className="assistant-header-actions">
           <button title="Clear conversation" onClick={() => { setPlan(null); setError(""); setAiOperation("idle", 0, "Ready for local analysis"); }}><Eraser size={14} /></button>
           <button title="Collapse AI Assistant" onClick={() => setCollapsed(true)}><ChevronLeft size={15} /></button>
@@ -202,15 +205,16 @@ export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => 
       </header>
 
       <div className="assistant-scroll">
+        <CloudAiPanel />
         <PixelAnalysisPanel onNotice={onNotice} />
         <section className="scene-understanding-card">
-          <div className="assistant-section-title"><Sparkles size={14} /><strong>Image information</strong><span>LOCAL</span></div>
+          <div className="assistant-section-title"><Sparkles size={14} /><strong> <T text={"Image information"} /> </strong><span>LOCAL</span></div>
           <div className="scene-tags">{sceneTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
           <p>{image ? `Heuristic review of ${image.name}: ${image.width} × ${image.height}. No cloud vision or identity model has been used.` : "Import a photo to inspect file characteristics and build an explainable edit plan."}</p>
         </section>
 
         <section className="assistant-conversation">
-          <div className="chat-bubble user"><span>You</span><p>{prompt}</p></div>
+          <div className="chat-bubble user"><span> <T text={"You"} /> </span><p>{prompt}</p></div>
           <div className="chat-bubble assistant"><span><Bot size={12} /> LumaForge</span><p>{plan?.summary ?? "Describe the light or mood you want. I can suggest global, reversible adjustments using local prompt rules."}</p></div>
           <label className="prompt-composer">
             <textarea aria-label="AI editing prompt" maxLength={500} value={prompt} onChange={(event) => setPrompt(event.target.value)} />
@@ -218,39 +222,39 @@ export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => 
               {aiStatus === "analyzing" ? <LoaderCircle className="spin" size={15} /> : <Send size={15} />}
             </button>
           </label>
-          {error && <div className="inline-error"><TriangleAlert size={14} />{error}<button onClick={() => void generatePlan()}><RefreshCw size={13} /> Retry</button></div>}
-          {aiStatus === "analyzing" && <div className="operation-card"><ProgressBar value={aiProgress} label={aiMessage} /><button className="text-button danger" onClick={cancelOperation}><X size={13} /> Cancel</button></div>}
+          {error && <div className="inline-error"><TriangleAlert size={14} /><T text={error} /><button onClick={() => void generatePlan()}><RefreshCw size={13} /> <T text={"Retry"} /> </button></div>}
+          {aiStatus === "analyzing" && <div className="operation-card"><ProgressBar value={aiProgress} label={aiMessage} /><button className="text-button danger" onClick={cancelOperation}><X size={13} /> <T text={"Cancel"} /> </button></div>}
         </section>
 
         <section className="assistant-suggestions">
-          <div className="assistant-section-title"><SlidersHorizontal size={14} /><strong>Creative recipes</strong><span>{builtInSuggestions.length}</span></div>
+          <div className="assistant-section-title"><SlidersHorizontal size={14} /><strong> <T text={"Creative recipes"} /> </strong><span>{builtInSuggestions.length}</span></div>
           {builtInSuggestions.map((suggestion) => (
             <article className={`suggestion-item ${activePreview === suggestion.id ? "previewing" : ""}`} key={suggestion.id}>
               <div className="suggestion-select-row">
                 <button className={`selection-check ${selected[suggestion.id] ? "selected" : ""}`} aria-label={`Select ${suggestion.name}`} aria-pressed={selected[suggestion.id]} onClick={() => setSelected((state) => ({ ...state, [suggestion.id]: !state[suggestion.id] }))}>{selected[suggestion.id] && <Check size={12} />}</button>
                 <div><strong>{suggestion.name}</strong><small>{suggestion.area}</small></div>
-                <span className="confidence-chip">Recipe</span>
+                <span className="confidence-chip"> <T text={"Recipe"} /> </span>
               </div>
-              <label className="suggestion-strength"><span>Strength</span><input type="range" min="0" max="100" value={strength[suggestion.id]} onChange={(event) => setStrength((state) => ({ ...state, [suggestion.id]: Number(event.target.value) }))} /><output>{strength[suggestion.id]}</output></label>
-              <div className="suggestion-actions"><button disabled={!image} onClick={() => previewSuggestion(suggestion.id)}>{activePreview === suggestion.id ? "Cancel preview" : "Preview"}</button><button className="apply" disabled={!image} onClick={() => applySuggestion(suggestion.id)}>Apply</button></div>
+              <label className="suggestion-strength"><span> <T text={"Strength"} /> </span><input type="range" min="0" max="100" value={strength[suggestion.id]} onChange={(event) => setStrength((state) => ({ ...state, [suggestion.id]: Number(event.target.value) }))} /><output>{strength[suggestion.id]}</output></label>
+              <div className="suggestion-actions"><button disabled={!image} onClick={() => previewSuggestion(suggestion.id)}>{activePreview === suggestion.id ? "Cancel preview" : "Preview"}</button><button className="apply" disabled={!image} onClick={() => applySuggestion(suggestion.id)}> <T text={"Apply"} /> </button></div>
             </article>
           ))}
         </section>
 
         {plan && (
           <section className="generated-plan-card">
-            <div className="assistant-section-title"><Bot size={14} /><strong>Generated Plan</strong><span>{plan.changes.length} changes</span></div>
+            <div className="assistant-section-title"><Bot size={14} /><strong> <T text={"Generated Plan"} /> </strong><span>{plan.changes.length} <T text={"changes"} /> </span></div>
             <ul>{plan.changes.map((change) => <li key={change.key}><span>{change.key}</span><b>{change.value > 0 ? "+" : ""}{change.value}</b><small>{change.reason}</small></li>)}</ul>
             {plan.warnings.map((warning) => <p className="plan-warning" key={warning}><TriangleAlert size={13} />{warning}</p>)}
           </section>
         )}
 
-        <section className="quality-card"><div className="protection-grid"><span><ShieldCheck size={14} /> Original unchanged</span><span><ShieldCheck size={14} /> Undoable adjustments</span></div><p>Recipes change the whole image. Face recognition, selective retouching and generative AI require a connected provider.</p></section>
+        <section className="quality-card"><div className="protection-grid"><span><ShieldCheck size={14} /> <T text={"Original unchanged"} /> </span><span><ShieldCheck size={14} /> <T text={"Undoable adjustments"} /> </span></div><p>Recipes change the whole image. Face recognition, selective retouching and generative AI require a connected provider.</p></section>
       </div>
 
       <footer className="assistant-footer">
-        <button className="assistant-secondary" onClick={() => { setPlan(null); onNotice("Generated plan cleared"); }}><X size={14} /> Clear plan</button>
-        <button className="assistant-primary" disabled={!image} onClick={applySelected}><Sparkles size={14} /> Apply selected</button>
+        <button className="assistant-secondary" onClick={() => { setPlan(null); onNotice("Generated plan cleared"); }}><X size={14} /> <T text={"Clear plan"} /> </button>
+        <button className="assistant-primary" disabled={!image} onClick={applySelected}><Sparkles size={14} /> <T text={"Apply selected"} /> </button>
       </footer>
     </aside>
   );

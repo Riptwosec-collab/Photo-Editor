@@ -1,4 +1,5 @@
 "use client";
+import { T } from "@/features/i18n/text";
 
 import { useId, useState, type ReactNode } from "react";
 import { ChevronDown, RotateCcw } from "lucide-react";
@@ -42,8 +43,8 @@ export function AccordionSection({
         >
           <span className="inspector-section-icon">{icon}</span>
           <span className="inspector-section-copy">
-            <strong>{title}</strong>
-            {subtitle && <small>{subtitle}</small>}
+            <strong><T text={title} /></strong>
+            {subtitle && <small><T text={subtitle} /></small>}
           </span>
           {badge && <span className="section-badge">{badge}</span>}
           <ChevronDown className="section-chevron" size={15} />
@@ -89,7 +90,7 @@ export function AdjustmentSlider({
     <div className={cn("adjustment-control", changed && "changed", disabled && "disabled")}>
       <label htmlFor={id} className="adjustment-label">
         <span className="changed-dot" aria-hidden="true" />
-        <span>{label}</span>
+        <span><T text={label} /></span>
       </label>
       <div className="adjustment-value-wrap">
         <input
