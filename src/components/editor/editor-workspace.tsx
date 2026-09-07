@@ -13,12 +13,14 @@ import { PresetStrip } from "./preset-strip";
 import { ProInspector } from "./pro-inspector";
 import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
 import { useEditorStore } from "@/features/editor/store";
+import { usePreferences } from "@/features/studio/preferences";
 import { useStudioStore } from "@/features/studio/store";
 import { getProject, saveProject } from "@/lib/idb";
 import { cn } from "@/lib/cn";
 
-export function EditorWorkspace({ initialProjectId }: { initialProjectId?: string }) {
+export function EditorWorkspace({ initialProjectId, initialTool }: { initialProjectId?: string; initialTool?: string }) {
   const router = useRouter();
+  const autosave = usePreferences((s) => s.autosave);
   const image = useEditorStore((state) => state.image);
   const currentProjectId = useEditorStore((state) => state.currentProjectId);
   const adjustments = useEditorStore((state) => state.adjustments);
@@ -65,6 +67,14 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
     mobile.addEventListener("change", applyCanvasFirstDefaults);
     return () => mobile.removeEventListener("change", applyCanvasFirstDefaults);
   }, [setAssistantCollapsed, setInspectorCollapsed]);
+
+  useEffect(() => {
+    if (initialTool === "assistant") setAssistantCollapsed(false);
+    else if (initialTool && ["light", "color", "auto-enhance", "ai-director", "reverse-preset", "color-consistency"].includes(initialTool)) {
+      setInspectorCollapsed(false);
+      setActiveInspectorSection(initialTool);
+    }
+  }, [initialTool, setAssistantCollapsed, setInspectorCollapsed, setActiveInspectorSection]);
 
   useEffect(() => {
     if (!initialProjectId) return;
@@ -152,16 +162,16 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   );
 
   useEffect(() => {
-    if (!image || !currentProjectId || loadingProject) return;
+    if (!autosave || !image || !currentProjectId || loadingProject) return;
     const timer = window.setTimeout(() => void persistProject(true), 1400);
     return () => window.clearTimeout(timer);
-  }, [adjustments, currentProjectId, geometry, image, loadingProject, persistProject, projectName]);
+  }, [autosave, adjustments, currentProjectId, geometry, image, loadingProject, persistProject, projectName]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const editingText = target?.matches("input,textarea,select,[contenteditable=true]");
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      const editingText = target?.matches('input:not([type="range"]):not([type="checkbox"]),textarea,select,[contenteditable=true]');
+      if (!editingText && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo();
         else undo();
@@ -212,7 +222,7 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           onNotice={showNotice}
         />
 
-        <AiAssistantPanel onNotice={showNotice} />
+        <AiAssistantPanel key={image?.objectUrl ?? "empty"} onNotice={showNotice} />
 
         <main className="professional-editor-main">
           {loadingProject ? (

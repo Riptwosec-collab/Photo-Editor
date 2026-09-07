@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "./phase-two.css";
 import "./tone-curve.css";
@@ -10,10 +9,9 @@ import "./export-center.css";
 import "./import-tools.css";
 import "./interaction-fixes.css";
 import "./pro-studio.css";
+import "./studio-upgrade.css";
 import { Providers } from "@/components/providers";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
-const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: "LumaForge AI Studio",
@@ -29,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="th" className={`${geist.variable} ${mono.variable}`}>
+    <html lang="th">
       <body><Providers>{children}</Providers></body>
     </html>
   );

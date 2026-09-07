@@ -15,10 +15,15 @@ import {
 import { DEFAULT_ADJUSTMENTS } from "@/features/editor/defaults";
 import { renderToCanvas } from "@/features/editor/image-processing";
 import { useEditorStore } from "@/features/editor/store";
+import { usePreferences } from "@/features/studio/preferences";
 import { useStudioStore } from "@/features/studio/store";
 import { cn } from "@/lib/cn";
 
 export function CanvasStage() {
+  const performanceMode = usePreferences((s) => s.performanceMode);
+  const sourceCache = useRef<HTMLImageElement | null>(null);
+  const [renderError, setRenderError] = useState("");
+  const [panEnabled, setPanEnabled] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const editedRef = useRef<HTMLCanvasElement>(null);
   const originalRef = useRef<HTMLCanvasElement>(null);
@@ -68,54 +73,42 @@ export function CanvasStage() {
   }, []);
 
   useEffect(() => {
-    if (!image || !editedRef.current || !originalRef.current) return;
+    if (!image) return;
     let cancelled = false;
-    setRendering(true);
-    const source = new Image();
-    source.onload = () => {
-      if (cancelled || !editedRef.current || !originalRef.current) return;
-      requestAnimationFrame(() => {
+    let frame = 0;
+    const source = sourceCache.current?.src === image.objectUrl ? sourceCache.current : new Image();
+    const draw = () => {
+      if (cancelled) return;
+      setRendering(true);
+      setRenderError("");
+      frame = requestAnimationFrame(() => {
         if (cancelled) return;
         try {
-          renderToCanvas(
-            source,
-            source.naturalWidth,
-            source.naturalHeight,
-            editedRef.current!,
-            adjustments,
-            geometry,
-          );
-          renderToCanvas(
-            source,
-            source.naturalWidth,
-            source.naturalHeight,
-            originalRef.current!,
-            DEFAULT_ADJUSTMENTS,
-            geometry,
-          );
-          for (const [index, canvas] of gridRefs.current.entries()) {
-            if (!canvas) continue;
-            renderToCanvas(
-              source,
-              source.naturalWidth,
-              source.naturalHeight,
-              canvas,
-              index % 2 === 0 ? DEFAULT_ADJUSTMENTS : adjustments,
-              geometry,
-              900,
-            );
+          const limit = performanceMode ? 1000 : 1800;
+          if (compareMode === "grid") {
+            gridRefs.current.forEach((canvas, index) => {
+              if (canvas) renderToCanvas(source, source.naturalWidth, source.naturalHeight, canvas,
+                index % 2 === 0 ? DEFAULT_ADJUSTMENTS : adjustments, geometry, Math.min(limit, 900));
+            });
+          } else {
+            if (editedRef.current) renderToCanvas(source, source.naturalWidth, source.naturalHeight,
+              editedRef.current, adjustments, geometry, limit);
+            if (originalRef.current) renderToCanvas(source, source.naturalWidth, source.naturalHeight,
+              originalRef.current, DEFAULT_ADJUSTMENTS, geometry, limit);
           }
-        } finally {
-          setRendering(false);
-        }
+        } catch (error) {
+          setRenderError(error instanceof Error ? error.message : "Could not render this image");
+        } finally { setRendering(false); }
       });
     };
-    source.onerror = () => setRendering(false);
-    source.src = image.objectUrl;
-    return () => {
-      cancelled = true;
-    };
-  }, [adjustments, geometry, image]);
+    if (source.complete && source.naturalWidth && source.src === image.objectUrl) draw();
+    else {
+      source.onload = () => { sourceCache.current = source; draw(); };
+      source.onerror = () => { if (!cancelled) { setRenderError("Could not decode the image. Please import it again."); setRendering(false); } };
+      source.src = image.objectUrl;
+    }
+    return () => { cancelled = true; cancelAnimationFrame(frame); source.onload = null; source.onerror = null; };
+  }, [adjustments, geometry, image, compareMode, performanceMode]);
 
   if (!image) return null;
 
@@ -132,7 +125,7 @@ export function CanvasStage() {
         "professional-stage",
         transparentBackground && "transparent-bg",
         softProof && "soft-proof",
-        spaceHeld && "space-pan",
+        (spaceHeld || panEnabled) && "space-pan",
       )}
     >
       <div
@@ -162,6 +155,7 @@ export function CanvasStage() {
             drag.current.py + event.clientY - drag.current.y,
           );
         }}
+        onPointerCancel={() => { drag.current = null; }}
         onPointerUp={() => {
           drag.current = null;
         }}
@@ -186,6 +180,19 @@ export function CanvasStage() {
             />
             {(compareMode === "vertical" || compareMode === "horizontal") && !showOriginal && (
               <div
+                role="slider"
+                tabIndex={0}
+                aria-label="Before and after comparison"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(comparePosition)}
+                aria-orientation={compareMode === "horizontal" ? "vertical" : "horizontal"}
+                onKeyDown={(event) => {
+                  if (["ArrowLeft", "ArrowDown", "ArrowRight", "ArrowUp", "Home", "End"].includes(event.key)) {
+                    event.preventDefault();
+                    setComparePosition(event.key === "Home" ? 0 : event.key === "End" ? 100 : comparePosition + (["ArrowLeft", "ArrowUp"].includes(event.key) ? -2 : 2));
+                  }
+                }}
                 className={cn("compare-handle", compareMode)}
                 style={compareMode === "vertical" ? { left: `${comparePosition}%` } : { top: `${comparePosition}%` }}
                 onPointerDown={(event) => {
@@ -194,7 +201,7 @@ export function CanvasStage() {
                 }}
                 onPointerMove={(event) => {
                   if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
-                  const viewport = event.currentTarget.parentElement?.parentElement;
+                  const viewport = event.currentTarget.parentElement;
                   if (!viewport) return;
                   const rect = viewport.getBoundingClientRect();
                   const next = compareMode === "horizontal"
@@ -215,6 +222,7 @@ export function CanvasStage() {
         {safeZonesVisible && <div className="safe-zone-overlay" aria-label="Safe zones" />}
         {clippingVisible && <div className="clipping-overlay" aria-label="Clipping warning preview"><span>Clipping preview</span></div>}
         {maskOverlayVisible && <div className="mask-preview-overlay" aria-label="Local radial mask preview"><span>Radial mask preview</span></div>}
+        {renderError && <span className="render-badge" role="alert">{renderError}</span>}
         {rendering && <span className="render-badge">Rendering shared preview…</span>}
       </div>
 
@@ -224,12 +232,12 @@ export function CanvasStage() {
         <button onClick={() => setZoom(zoom * 1.25)} aria-label="Zoom in" title="Zoom in"><Plus size={15} /></button>
         <button onClick={() => { setZoom(1); setPan(0, 0); }} aria-label="Fit image" title="Fit"><Focus size={15} /><span>Fit</span></button>
         <button onClick={() => { setZoom(1); setPan(0, 0); }} aria-label="View at 100 percent" title="100%">100%</button>
-        <button className={spaceHeld ? "active" : ""} aria-label="Pan tool" title="Hold Space to pan"><Move size={15} /></button>
+        <button onClick={() => setPanEnabled(!panEnabled)} aria-pressed={panEnabled} className={spaceHeld || panEnabled ? "active" : ""} aria-label="Pan tool" title="Hold Space to pan"><Move size={15} /></button>
         <span className="toolbar-separator" />
         <button className={gridVisible ? "active" : ""} onClick={() => toggleCanvasFlag("gridVisible")} aria-label="Toggle grid" title="Grid"><Grid3X3 size={15} /></button>
         <button className={guidesVisible ? "active" : ""} onClick={() => toggleCanvasFlag("guidesVisible")} aria-label="Toggle guides" title="Guides"><ScanLine size={15} /></button>
         <button className={safeZonesVisible ? "active" : ""} onClick={() => toggleCanvasFlag("safeZonesVisible")} aria-label="Toggle safe zones" title="Safe zones"><SquareDashed size={15} /></button>
-        <button onClick={() => void stageRef.current?.requestFullscreen()} aria-label="Full screen" title="Full screen"><Maximize2 size={15} /></button>
+        <button onClick={() => void stageRef.current?.requestFullscreen?.().catch(() => setRenderError("Full screen is unavailable in this browser"))} aria-label="Full screen" title="Full screen"><Maximize2 size={15} /></button>
       </div>
 
       <div className="camera-metadata-bar">

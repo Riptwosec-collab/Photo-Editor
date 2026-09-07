@@ -19,7 +19,7 @@ const redirects: Record<string, string> = {
   "photo-editor": "/editor",
   ai: "/ai-studio",
   beauty: "/beauty-studio",
-  batch: "/batch-edit",
+  "batch-edit": "/batch",
   exports: "/export-center",
   looks: "/presets",
   library: "/gallery",

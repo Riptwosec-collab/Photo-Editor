@@ -31,7 +31,7 @@ test("mobile editor is canvas-first with functional bottom sheets", async ({ pag
 
   await page.getByTitle("Open AI Assistant").click();
   await expect(page.getByLabel("AI editing prompt")).toBeVisible();
-  await expect(page.getByText("Scene Understanding", { exact: true })).toBeVisible();
+  await expect(page.getByText("Image information", { exact: true })).toBeVisible();
   await page.getByTitle("Collapse AI Assistant").click();
 
   await expect(page.getByRole("link", { name: "Edit" })).toHaveAttribute("aria-current", "page");

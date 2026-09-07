@@ -1,11 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bot,
   Check,
   ChevronLeft,
-  CircleGauge,
   Eraser,
   LoaderCircle,
   RefreshCw,
@@ -19,6 +18,8 @@ import {
 import { useEditorStore } from "@/features/editor/store";
 import type { Adjustments, AiEditPlan, AdjustmentKey } from "@/features/editor/types";
 import { useStudioStore } from "@/features/studio/store";
+import { createLocalEditPlan } from "@/features/ai/local-provider";
+import { PixelAnalysisPanel } from "./pixel-analysis-panel";
 import { ProgressBar } from "@/components/ui/editor-controls";
 
 const builtInSuggestions: Array<{
@@ -39,7 +40,7 @@ const builtInSuggestions: Array<{
     id: "skin-tones",
     name: "Enhance Skin Tones",
     confidence: 88,
-    area: "Face and skin",
+    area: "Global warm tones",
     changes: { temperature: 5, tint: 3, orangeSaturation: 7, orangeLuminance: 5, texture: -5, clarity: -3 },
   },
   {
@@ -53,7 +54,7 @@ const builtInSuggestions: Array<{
     id: "separation",
     name: "Add Subject Separation",
     confidence: 79,
-    area: "Subject and background",
+    area: "Global contrast",
     changes: { clarity: 8, dehaze: 7, vignette: 18, midtoneContrast: 10 },
   },
 ];
@@ -91,52 +92,31 @@ export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => 
     if (image.type.includes("webp")) tags.push("WebP");
     if (adjustments.exposure < -0.15 || adjustments.shadows > 18) tags.push("Low-light recovery");
     if (Math.abs(adjustments.temperature) > 8) tags.push("Color cast adjusted");
-    tags.push("Background present");
+
     return tags;
   }, [adjustments.exposure, adjustments.shadows, adjustments.temperature, image]);
 
-  const qualityScore = image
-    ? Math.max(62, Math.min(96, 82 + Math.round(adjustments.sharpness / 20) - Math.round(adjustments.noiseReduction / 30)))
-    : 0;
+  useEffect(() => () => { cancelRef.current++; }, []);
 
   async function generatePlan() {
-    if (!image) {
-      setError("Import an image before generating an edit plan.");
-      return;
-    }
-    const token = cancelRef.current + 1;
-    cancelRef.current = token;
-    setError("");
-    setPlan(null);
-    setAiOperation("analyzing", 8, "Reading prompt and current edit state…");
+    if (!image) { setError("Import an image before generating an edit plan."); return; }
+    const token = ++cancelRef.current;
+    setError(""); setPlan(null);
+    setAiOperation("analyzing", 0, "Matching your prompt to local editing rules…");
+    // Yield one frame so the UI can display the operation without simulated progress.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    if (cancelRef.current !== token) return;
     try {
-      for (const [progress, message] of [
-        [24, "Evaluating tonal balance…"],
-        [46, "Protecting identity and skin texture…"],
-        [68, "Building a non-destructive edit plan…"],
-      ] as Array<[number, string]>) {
-        await new Promise((resolve) => window.setTimeout(resolve, 180));
-        if (cancelRef.current !== token) return;
-        setAiOperation("analyzing", progress, message);
-      }
-      const response = await fetch("/api/ai/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-      const data = (await response.json()) as AiEditPlan & { error?: string };
-      if (!response.ok) throw new Error(data.error || "Plan generation failed");
-      if (cancelRef.current !== token) return;
-      setPlan(data);
-      setAiOperation("planned", 100, "Plan ready for review");
+      setPlan(createLocalEditPlan(prompt));
+      setAiOperation("planned", 100, "Local plan ready for review");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Plan generation failed");
+      setError(caught instanceof Error ? caught.message : "Planning failed");
       setAiOperation("error", 0, "Planning failed");
     }
   }
 
   function cancelOperation() {
-    cancelRef.current += 1;
+    cancelRef.current++;
     setAiOperation("cancelled", 0, "Operation cancelled");
   }
 
@@ -222,15 +202,16 @@ export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => 
       </header>
 
       <div className="assistant-scroll">
+        <PixelAnalysisPanel onNotice={onNotice} />
         <section className="scene-understanding-card">
-          <div className="assistant-section-title"><Sparkles size={14} /><strong>Scene Understanding</strong><span>LOCAL</span></div>
+          <div className="assistant-section-title"><Sparkles size={14} /><strong>Image information</strong><span>LOCAL</span></div>
           <div className="scene-tags">{sceneTags.map((tag) => <span key={tag}>{tag}</span>)}</div>
           <p>{image ? `Heuristic review of ${image.name}: ${image.width} × ${image.height}. No cloud vision or identity model has been used.` : "Import a photo to inspect file characteristics and build an explainable edit plan."}</p>
         </section>
 
         <section className="assistant-conversation">
           <div className="chat-bubble user"><span>You</span><p>{prompt}</p></div>
-          <div className="chat-bubble assistant"><span><Bot size={12} /> LumaForge</span><p>{plan?.summary ?? "I’ll improve tonal balance, preserve natural skin texture, and keep every adjustment non-destructive."}</p></div>
+          <div className="chat-bubble assistant"><span><Bot size={12} /> LumaForge</span><p>{plan?.summary ?? "Describe the light or mood you want. I can suggest global, reversible adjustments using local prompt rules."}</p></div>
           <label className="prompt-composer">
             <textarea aria-label="AI editing prompt" maxLength={500} value={prompt} onChange={(event) => setPrompt(event.target.value)} />
             <button type="button" title="Generate edit plan" disabled={prompt.trim().length < 3 || aiStatus === "analyzing"} onClick={() => void generatePlan()}>
@@ -242,16 +223,16 @@ export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => 
         </section>
 
         <section className="assistant-suggestions">
-          <div className="assistant-section-title"><SlidersHorizontal size={14} /><strong>AI Suggestions</strong><span>{builtInSuggestions.length}</span></div>
+          <div className="assistant-section-title"><SlidersHorizontal size={14} /><strong>Creative recipes</strong><span>{builtInSuggestions.length}</span></div>
           {builtInSuggestions.map((suggestion) => (
             <article className={`suggestion-item ${activePreview === suggestion.id ? "previewing" : ""}`} key={suggestion.id}>
               <div className="suggestion-select-row">
                 <button className={`selection-check ${selected[suggestion.id] ? "selected" : ""}`} aria-label={`Select ${suggestion.name}`} aria-pressed={selected[suggestion.id]} onClick={() => setSelected((state) => ({ ...state, [suggestion.id]: !state[suggestion.id] }))}>{selected[suggestion.id] && <Check size={12} />}</button>
                 <div><strong>{suggestion.name}</strong><small>{suggestion.area}</small></div>
-                <span className="confidence-chip">{suggestion.confidence}%</span>
+                <span className="confidence-chip">Recipe</span>
               </div>
               <label className="suggestion-strength"><span>Strength</span><input type="range" min="0" max="100" value={strength[suggestion.id]} onChange={(event) => setStrength((state) => ({ ...state, [suggestion.id]: Number(event.target.value) }))} /><output>{strength[suggestion.id]}</output></label>
-              <div className="suggestion-actions"><button onClick={() => previewSuggestion(suggestion.id)}>{activePreview === suggestion.id ? "Cancel preview" : "Preview"}</button><button className="apply" onClick={() => applySuggestion(suggestion.id)}>Apply</button></div>
+              <div className="suggestion-actions"><button disabled={!image} onClick={() => previewSuggestion(suggestion.id)}>{activePreview === suggestion.id ? "Cancel preview" : "Preview"}</button><button className="apply" disabled={!image} onClick={() => applySuggestion(suggestion.id)}>Apply</button></div>
             </article>
           ))}
         </section>
@@ -264,15 +245,11 @@ export function AiAssistantPanel({ onNotice }: { onNotice: (message: string) => 
           </section>
         )}
 
-        <section className="quality-card">
-          <div className="quality-score"><CircleGauge size={18} /><div><small>Photo quality score</small><strong>{qualityScore || "—"}<span>{qualityScore ? "/100" : ""}</span></strong></div></div>
-          <div className="protection-grid"><span><ShieldCheck size={14} /> Identity preserved</span><span><ShieldCheck size={14} /> Skin texture protected</span></div>
-          <p>Confidence is based on local rules and current parameters, not a trained vision model.</p>
-        </section>
+        <section className="quality-card"><div className="protection-grid"><span><ShieldCheck size={14} /> Original unchanged</span><span><ShieldCheck size={14} /> Undoable adjustments</span></div><p>Recipes change the whole image. Face recognition, selective retouching and generative AI require a connected provider.</p></section>
       </div>
 
       <footer className="assistant-footer">
-        <button className="assistant-secondary" onClick={() => { setPlan(null); onNotice("Alternative suggestions generated locally"); }}><RefreshCw size={14} /> Alternatives</button>
+        <button className="assistant-secondary" onClick={() => { setPlan(null); onNotice("Generated plan cleared"); }}><X size={14} /> Clear plan</button>
         <button className="assistant-primary" disabled={!image} onClick={applySelected}><Sparkles size={14} /> Apply selected</button>
       </footer>
     </aside>
