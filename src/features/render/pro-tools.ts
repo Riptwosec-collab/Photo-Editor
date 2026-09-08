@@ -3,7 +3,7 @@ export function sampleHue(r:number,g:number,b:number) {
  const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
  if(d<8) return null;
  let h=max===r?60*((g-b)/d%6):max===g?60*((b-r)/d+2):60*((r-g)/d+4);h=(h+360)%360;
- const centers=[0,30,60,120,180,240,275,315];
+ const centers=[0,30,60,120,180,240,280,320];
  return hueBands[centers.map(c=>Math.min(Math.abs(c-h),360-Math.abs(c-h))).reduce((best,v,i,a)=>v<a[best]?i:best,0)];
 }
 export function clippingKind(r:number,g:number,b:number,a:number) {

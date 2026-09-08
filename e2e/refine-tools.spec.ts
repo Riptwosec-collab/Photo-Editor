@@ -16,7 +16,7 @@ test('transform is keyboard accessible and survives draft recovery',async({page,
 test('healing spots are reversible',async({page,isMobile})=>{
  await imported(page);await page.locator('.creative-tools summary').filter({hasText:'Portrait retouch'}).click();await page.getByRole('button',{name:'Healing brush',exact:true}).click();
  if(isMobile)await page.getByTitle('Collapse inspector').click();
- await page.getByLabel('Paint layer mask').click({position:{x:10,y:10}});
+ await page.getByLabel('Paint layer mask').click();
  if(isMobile)await page.getByTitle('Open Editing Inspector').click();await expect(page.locator('.retouch-count')).toHaveText('1');
  if(isMobile)await page.getByTitle('Collapse inspector').click();await page.getByRole('button',{name:'Undo',exact:true}).click();
  if(isMobile)await page.getByTitle('Open Editing Inspector').click();await expect(page.locator('.retouch-count')).toHaveText('0');

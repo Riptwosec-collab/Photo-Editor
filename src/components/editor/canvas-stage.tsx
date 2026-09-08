@@ -189,6 +189,9 @@ export function CanvasStage() {
               data-picking={colorPicking}
 
             />
+        {gridVisible && <div className="canvas-grid-overlay" aria-hidden="true" />}
+        {guidesVisible && <div className="canvas-guides-overlay" aria-hidden="true"><span /><span /></div>}
+        {safeZonesVisible && <div className="safe-zone-overlay" aria-label="Safe zones" />}
             {clippingVisible && !showOriginal && <canvas ref={clippingRef} className="canvas-layer pixel-clipping" style={editedClip} aria-label="Pixel clipping overlay"/>}
             {maskEditing && <MaskCanvas />}{!colorPicking && !maskEditing && !showOriginal && compareMode === "off" && <TransformOverlay />}
             {(compareMode === "vertical" || compareMode === "horizontal") && !showOriginal && (
@@ -230,9 +233,7 @@ export function CanvasStage() {
           </div>
         )}
 
-        {gridVisible && <div className="canvas-grid-overlay" aria-hidden="true" />}
-        {guidesVisible && <div className="canvas-guides-overlay" aria-hidden="true"><span /><span /></div>}
-        {safeZonesVisible && <div className="safe-zone-overlay" aria-label="Safe zones" />}
+
 
         {maskOverlayVisible && <div className="mask-preview-overlay" aria-label="Local radial mask preview"><span>Radial mask preview</span></div>}
         {renderError && <span className="render-badge" role="alert">{renderError}</span>}
