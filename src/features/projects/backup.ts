@@ -9,6 +9,7 @@ export const layersSchema = z.array(z.object({
   adjustments: z.record(z.string(), z.number().min(-360).max(360)),
   mask: z.object({ edgeShift: z.number().min(-1).max(1).optional(), edgeContrast: z.number().min(0).max(1).optional(), kind: z.enum(["all", "radial", "linear", "brush", "image"]), dataUrl: imageData.optional(), x: z.number().min(0).max(1), y: z.number().min(0).max(1), radius: z.number().min(.001).max(2), feather: z.number().min(0).max(1), invert: z.boolean(), strokes: z.array(z.object({ points: z.array(point).max(3000), radius: z.number().min(.001).max(.5), erase: z.boolean().optional() })).max(500) }),
   transform: z.object({x:z.number().min(-1).max(1),y:z.number().min(-1).max(1),scale:z.number().min(.1).max(4),rotation:z.number().min(-180).max(180)}).optional(),
+  replaceBase: z.boolean().optional(),
   retouchMode: z.enum(["clone","heal"]).optional(), decontaminate: z.number().min(0).max(1).optional(),
   colorReplace: z.object({color:z.string().regex(/^#[a-fA-F0-9]{6}$/),strength:z.number().min(0).max(1)}).optional(),
   channelCurves: z.object({ red: z.array(z.number().min(0).max(1)).length(5), green: z.array(z.number().min(0).max(1)).length(5), blue: z.array(z.number().min(0).max(1)).length(5) }).optional(),

@@ -94,7 +94,7 @@ export async function compositeLayers(canvas: Surface, layers: EditorLayer[] = [
       ctx.translate(w*(.5+t.x),h*(.5+t.y));ctx.rotate(t.rotation*Math.PI/180);ctx.scale(t.scale,t.scale);ctx.translate(-w/2,-h/2);
     };
     // Raster outputs replace selected pixels, allowing transparent AI cutouts.
-    if (layer.kind === "raster") { ctx.save(); ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = layer.opacity; transform(); ctx.drawImage(mask, 0, 0); ctx.restore(); }
+    if (layer.kind === "raster" && layer.replaceBase !== false) { ctx.save(); ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = layer.opacity; transform(); ctx.drawImage(mask, 0, 0); ctx.restore(); }
     ctx.save(); ctx.globalAlpha = layer.opacity; transform(); ctx.drawImage(overlay, 0, 0); ctx.restore();
     overlay.width=0;overlay.height=0;mask.width=0;mask.height=0;
   }

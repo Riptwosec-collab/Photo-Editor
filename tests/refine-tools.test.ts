@@ -44,3 +44,8 @@ test('live transform previews create exactly one undo step when released',()=>{
  for(let i=0;i<10;i++)s.previewLayer(layer.id,{transform:{x:i/100,y:0,scale:1,rotation:0}});assert.equal(useEditorStore.getState().past.length,before);
  s.updateLayer(layer.id,{transform:{x:.09,y:0,scale:1,rotation:0}});assert.equal(useEditorStore.getState().past.length,before+1);s.undo();assert.equal(useEditorStore.getState().layers[0].transform,undefined);s.loadRecipe(DEFAULT_ADJUSTMENTS,DEFAULT_GEOMETRY,[]);
 });
+
+test('persisted batch files retain their filename and modification date',async()=>{
+ const {encodeStored,decodeStored}=await import('../src/lib/storage-codec');const file=new File(['pixels'],'queued.png',{type:'image/png',lastModified:1000});
+ const restored=decodeStored<File>(structuredClone(await encodeStored(file)));assert.equal(restored.name,'queued.png');assert.equal(restored.lastModified,1000);assert.equal(await restored.text(),'pixels');
+});

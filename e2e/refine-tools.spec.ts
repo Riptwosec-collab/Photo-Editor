@@ -38,3 +38,9 @@ test('48 MP original imports with bounded preview and survives reload',async({pa
  await expect(page.getByLabel('Edited image preview')).toBeVisible();await expect.poll(()=>page.getByLabel('Edited image preview').evaluate(n=>(n as HTMLCanvasElement).width)).toBeLessThanOrEqual(1800);
  await expect(page.locator('.draft-status')).toContainText('Draft saved on this device');await page.reload();if(isMobile)await page.getByTitle('Collapse inspector').click();await page.getByRole('button',{name:'Recover draft',exact:true}).first().click();await expect(page.getByLabel('Edited image preview')).toBeVisible();
 });
+
+test('imported raster overlays the original and keeps transparent margins',async({page})=>{
+ await imported(page);await page.getByLabel('Add image layer',{exact:true}).setInputFiles({name:'overlay.png',mimeType:'image/png',buffer:png});await expect(page.locator('.layer-row')).toHaveCount(1);
+ await page.getByText('Transform layer',{exact:true}).click();await expect(page.getByLabel('Transform scale',{exact:true})).toHaveValue('0.5');
+ await expect.poll(()=>page.getByLabel('Edited image preview').evaluate(n=>(n as HTMLCanvasElement).getContext('2d')!.getImageData(0,0,1,1).data[3])).toBe(255);
+});

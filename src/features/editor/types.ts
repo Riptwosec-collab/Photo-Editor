@@ -83,7 +83,7 @@ export type EditorLayer = {
   id: string; name: string; kind: "adjustment" | "text" | "raster"; visible: boolean; opacity: number;
   adjustments: Partial<Adjustments>; mask: LayerMask;
   transform?: { x: number; y: number; scale: number; rotation: number };
-  retouchMode?: "clone" | "heal"; decontaminate?: number;
+  replaceBase?: boolean; retouchMode?: "clone" | "heal"; decontaminate?: number;
   colorReplace?: { color: string; strength: number };
   lut?: CubeLut; channelCurves?: ChannelCurves; retouch?: { x: number; y: number; radius: number; sourceX: number; sourceY: number; mode?: "clone" | "heal" }[];
   text?: string; color?: string; fontSize?: number; x?: number; y?: number; dataUrl?: string;

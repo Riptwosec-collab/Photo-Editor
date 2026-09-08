@@ -423,3 +423,5 @@ Object.assign(thai, {
   "Apply color through this layer mask while retaining light and texture. Select sky with AI or paint the area manually.": "เปลี่ยนสีผ่านมาสก์โดยเก็บแสงและพื้นผิว เลือกท้องฟ้าด้วย AI หรือระบายพื้นที่เอง",
   "Editing uses sRGB. Wide-gamut originals are converted on import into the render pipeline. P3 export converts the edited result; it cannot restore colors outside sRGB. PNG profile support is verified before download.": "แต่งภาพในระบบ sRGB ภาพสีช่วงกว้างจะถูกแปลงเมื่อเรนเดอร์ การส่งออก P3 แปลงจากภาพที่แต่งแล้ว ไม่คืนสีที่เกิน sRGB ระบบตรวจว่าเบราว์เซอร์เก็บโปรไฟล์ PNG ได้ก่อนดาวน์โหลด"
 });
+
+Object.assign(thai, {"Add image layer":"เพิ่มเลเยอร์รูปภาพ","Image layer added. Up to 2000 px; use Transform to position it.":"เพิ่มเลเยอร์รูปแล้ว ขนาดสูงสุด 2000 พิกเซล ใช้ Transform จัดตำแหน่ง"});
