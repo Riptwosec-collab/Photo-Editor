@@ -40,7 +40,9 @@ export function ExportCenter() {
     const controller = new AbortController(); const target = canvas.current;
     const timer = setTimeout(() => {
       setBusy(true); setStatus("Preparing full-resolution export…");
-      void prepareExport(target, project, options, controller.signal).then((blob) => {
+      void prepareExport(target, project, options, controller.signal).then(async (blob) => {
+        const decoded = await createImageBitmap(blob);
+        try { if (!controller.signal.aborted) target.getContext("2d")!.drawImage(decoded, 0, 0); } finally { decoded.close(); }
         if (!controller.signal.aborted) { setPrepared({ key, blob, width: target.width, height: target.height }); setStatus("Ready to download"); }
       }).catch((e) => { if (!controller.signal.aborted) setStatus(e instanceof Error ? e.message : "Export preview failed"); }).finally(() => { if (!controller.signal.aborted) setBusy(false); });
     }, 450);

@@ -25,10 +25,13 @@ jobs:
       - name: Desktop Chromium release flow
         run: npm run test:e2e -- e2e/editor.spec.ts --project=chromium
       - name: Mobile Pixel release flow
+        if: ${{ !cancelled() }}
         run: npm run test:e2e -- e2e/mobile-editor.spec.ts --project=mobile
       - name: Studio navigation and image analysis
+        if: ${{ !cancelled() }}
         run: npm run test:e2e -- e2e/studio-upgrade.spec.ts
       - name: Recovery, layers, batch ZIP and language
+        if: ${{ !cancelled() }}
         run: npm run test:e2e -- e2e/recoverable-workflows.spec.ts
       - name: Upload Playwright diagnostics
         if: failure()
