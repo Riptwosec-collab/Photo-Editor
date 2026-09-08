@@ -1,3 +1,4 @@
+import { aiReadiness } from "@/features/ai/readiness";
 import { budgetClient,budgetConfig,budgetEnabled,reserveAi,positiveInteger } from "@/features/ai/budget";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -37,8 +38,7 @@ export async function GET(request: Request) {
     }catch(error){return response({error:error instanceof Error?error.message:"History unavailable"},400);}
   }
   if (!search.has("token")) {
-    const configured = Boolean(process.env.REPLICATE_API_TOKEN && process.env.AI_ALLOWED_USER_IDS && budgetEnabled());
-    return response(Object.fromEntries(Object.entries(providers()).map(([kind,p]) => [kind, { enabled: configured && Boolean(p.version && p.cost && p.cents), cost: p.cost || "Not configured", reserveCents:p.cents, dailyBudgetCents:budgetConfig().dailyCents, dailyJobs:budgetConfig().dailyJobs }])));
+    return response(Object.fromEntries(Object.entries(providers()).map(([kind,p]) => [kind, { ...aiReadiness(process.env,kind as "background"|"inpaint"|"selection"), cost: p.cost || "Not configured", reserveCents:p.cents, dailyBudgetCents:budgetConfig().dailyCents, dailyJobs:budgetConfig().dailyJobs }])));
   }
   try {
     const user = await owner(request);
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     }
     const body = z.object({ requestId:z.uuid(), fingerprint:z.string().regex(/^[0-9a-f]{64}$/), kind: z.enum(["background","inpaint","selection"]), image, mask: image.optional(), prompt: z.string().max(500).optional(), consent: z.literal(true) }).parse(raw);
     const provider = providers()[body.kind];
-    if (!process.env.REPLICATE_API_TOKEN || !provider.version || !provider.cost || !provider.cents || !budgetEnabled()) return response({ error: "AI provider is not configured" },503);
+    if (!aiReadiness(process.env,body.kind).enabled || !process.env.REPLICATE_API_TOKEN) return response({ error: "AI provider is not configured" },503);
     if (body.kind === "inpaint" && !body.mask) return response({ error: "Paint the area to remove first" },400);
     const input: Record<string,unknown> = { [provider.imageKey]: body.image };
     if (body.kind === "inpaint") { input[process.env.REPLICATE_INPAINT_MASK_KEY || "mask"] = body.mask; input.prompt = body.prompt || "Clean natural background, seamless texture, no object"; }

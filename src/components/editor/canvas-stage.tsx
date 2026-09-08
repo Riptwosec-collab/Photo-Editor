@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { DEFAULT_ADJUSTMENTS } from "@/features/editor/defaults";
 import { renderStudio } from "@/features/render/studio-renderer";
+import { TransformOverlay } from "./transform-overlay";
 import { MaskCanvas } from "./mask-canvas";
 import { useEditorStore } from "@/features/editor/store";
 import { usePreferences } from "@/features/studio/preferences";
@@ -54,7 +55,7 @@ export function CanvasStage() {
   const clippingVisible = useStudioStore((state) => state.clippingVisible);
   const maskOverlayVisible = useStudioStore((state) => state.maskOverlayVisible);
   const transparentBackground = useStudioStore((state) => state.transparentBackground);
-  const softProof = useStudioStore((state) => state.softProof);
+
   const toggleCanvasFlag = useStudioStore((state) => state.toggleCanvasFlag);
   const [rendering, setRendering] = useState(false);
   const [spaceHeld, setSpaceHeld] = useState(false);
@@ -115,7 +116,7 @@ export function CanvasStage() {
       className={cn(
         "professional-stage",
         transparentBackground && "transparent-bg",
-        softProof && "soft-proof",
+
         (spaceHeld || panEnabled) && "space-pan",
       )}
     >
@@ -175,7 +176,7 @@ export function CanvasStage() {
               style={showOriginal || compareMode === "blink" ? undefined : editedClip}
               aria-label="Edited image preview"
             />
-            {maskEditing && <MaskCanvas />}
+            {maskEditing && <MaskCanvas />}{!maskEditing && !showOriginal && compareMode === "off" && <TransformOverlay />}
             {(compareMode === "vertical" || compareMode === "horizontal") && !showOriginal && (
               <div
                 role="slider"

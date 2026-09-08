@@ -1,3 +1,4 @@
+import { healPatch, refineCoverage, cleanEdgeColors, featherCoverage } from "./retouch";
 import { applyProColor } from "../editor/color-tools";
 import { DEFAULT_ADJUSTMENTS } from "../editor/defaults";
 import { processImageData, applyDetailFilters } from "../editor/image-processing";
@@ -33,7 +34,7 @@ export async function drawMask(canvas: Surface, mask: LayerMask) {
   if ((mask.kind === "image" || mask.kind === "brush") && mask.dataUrl) {
     const bitmap=await createImageBitmap(await fetch(mask.dataUrl).then(r=>r.blob()));
     if(maskDraws.get(canvas)!==drawId){bitmap.close();return;}
-    ctx.save();ctx.filter=`blur(${mask.feather*Math.min(w,h)*.025}px)`;ctx.drawImage(bitmap,0,0,w,h);ctx.restore();bitmap.close();
+    ctx.drawImage(bitmap,0,0,w,h);bitmap.close();
   }
   if (mask.kind === "brush") for (const stroke of mask.strokes) {
     ctx.globalCompositeOperation = stroke.erase ? "destination-out" : "source-over";
@@ -43,12 +44,14 @@ export async function drawMask(canvas: Surface, mask: LayerMask) {
     ctx.stroke();
   }
   ctx.globalCompositeOperation = "source-over";
+  if (mask.feather && (mask.kind === "brush" || mask.kind === "image")) ctx.putImageData(featherCoverage(ctx.getImageData(0,0,w,h),mask.feather*Math.min(w,h)*.025),0,0);
+  if (mask.edgeShift || mask.edgeContrast) ctx.putImageData(refineCoverage(ctx.getImageData(0,0,w,h),mask.edgeShift,mask.edgeContrast),0,0);
   if (mask.invert) {
     ctx.globalCompositeOperation = "source-out"; ctx.fillStyle = "white"; ctx.fillRect(0, 0, w, h); ctx.globalCompositeOperation = "source-over";
   }
 }
 export async function compositeLayers(canvas: Surface, layers: EditorLayer[] = []) {
-  const ctx = canvas.getContext("2d", { willReadFrequently: true }) as Context;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true, colorSpace: "srgb" }) as Context;
   const w = canvas.width, h = canvas.height;
   for (const layer of layers) {
     if (!layer.visible || layer.opacity <= 0) continue;
@@ -64,20 +67,35 @@ export async function compositeLayers(canvas: Surface, layers: EditorLayer[] = [
       const blob = await fetch(layer.dataUrl).then((r) => r.blob());
       const bitmap = await createImageBitmap(blob); out.drawImage(bitmap, 0, 0, w, h); bitmap.close();
     }
+    if (layer.colorReplace) {
+      out.save(); out.globalCompositeOperation="color"; out.globalAlpha=layer.colorReplace.strength;
+      out.fillStyle=layer.colorReplace.color; out.fillRect(0,0,w,h); out.restore();
+    }
     // Clone spots are composited from the unmodified input of this layer, with feathered edges.
     for (const spot of layer.retouch ?? []) {
       const radius = Math.max(1, spot.radius * Math.min(w,h));
       const patch = surface(Math.ceil(radius*2), Math.ceil(radius*2)); const pc = patch.getContext("2d") as Context;
       pc.drawImage(canvas, spot.sourceX*w-radius, spot.sourceY*h-radius, radius*2, radius*2, 0, 0, radius*2, radius*2);
+      if (spot.mode === "heal") {
+        const target = surface(patch.width,patch.height); const tc = target.getContext("2d") as Context;
+        tc.drawImage(canvas,spot.x*w-radius,spot.y*h-radius,radius*2,radius*2,0,0,radius*2,radius*2);
+        pc.putImageData(healPatch(pc.getImageData(0,0,patch.width,patch.height),tc.getImageData(0,0,patch.width,patch.height)),0,0);
+        target.width=0;target.height=0;
+      }
       const fade=pc.createRadialGradient(radius,radius,radius*.55,radius,radius,radius); fade.addColorStop(0,"white");fade.addColorStop(1,"transparent");
       pc.globalCompositeOperation="destination-in";pc.fillStyle=fade;pc.fillRect(0,0,patch.width,patch.height);
-      out.drawImage(patch,spot.x*w-radius,spot.y*h-radius);
+      out.drawImage(patch,spot.x*w-radius,spot.y*h-radius); patch.width=0;patch.height=0;
     }
     const mask = surface(w, h); await drawMask(mask, layer.mask);
     out.globalCompositeOperation = "destination-in"; out.drawImage(mask, 0, 0);
+    if (layer.decontaminate) out.putImageData(cleanEdgeColors(out.getImageData(0,0,w,h),layer.decontaminate),0,0);
+    const transform = () => {
+      const t=layer.transform; if (!t) return;
+      ctx.translate(w*(.5+t.x),h*(.5+t.y));ctx.rotate(t.rotation*Math.PI/180);ctx.scale(t.scale,t.scale);ctx.translate(-w/2,-h/2);
+    };
     // Raster outputs replace selected pixels, allowing transparent AI cutouts.
-    if (layer.kind === "raster") { ctx.save(); ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = layer.opacity; ctx.drawImage(mask, 0, 0); ctx.restore(); }
-    ctx.save(); ctx.globalAlpha = layer.opacity; ctx.drawImage(overlay, 0, 0); ctx.restore();
+    if (layer.kind === "raster") { ctx.save(); ctx.globalCompositeOperation = "destination-out"; ctx.globalAlpha = layer.opacity; transform(); ctx.drawImage(mask, 0, 0); ctx.restore(); }
+    ctx.save(); ctx.globalAlpha = layer.opacity; transform(); ctx.drawImage(overlay, 0, 0); ctx.restore();
     overlay.width=0;overlay.height=0;mask.width=0;mask.height=0;
   }
 }

@@ -390,7 +390,7 @@ export function renderToCanvas(
   const height = Math.max(1, Math.round(visualHeight * scale));
   canvas.width = width;
   canvas.height = height;
-  const context = canvas.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  const context = canvas.getContext("2d", { willReadFrequently: true, colorSpace: "srgb" }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
   if (!context) throw new Error("Canvas 2D is unavailable");
 
   const rotation = geometry.rotation + geometry.straighten;

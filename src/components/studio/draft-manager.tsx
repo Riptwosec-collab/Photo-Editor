@@ -38,7 +38,8 @@ export function DraftManager() {
     });
     const onVisibility = () => { if (document.visibilityState === "hidden") save(); };
     document.addEventListener("visibilitychange", onVisibility);
-    return () => { save(); unsubscribe(); document.removeEventListener("visibilitychange", onVisibility); };
+    window.addEventListener("pagehide", save);
+    return () => { save(); unsubscribe(); document.removeEventListener("visibilitychange", onVisibility); window.removeEventListener("pagehide", save); };
   }, []);
   return null;
 }

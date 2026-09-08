@@ -1,6 +1,7 @@
+import { encodeColorManaged, type OutputColorSpace } from "./color-management";
 import { renderStudio } from "./studio-renderer";
 import type { StoredProject, ExportFormat, AspectRatio } from "../editor/types";
-export type ExportOptions = { format: ExportFormat; quality: number; longEdge: number; aspectRatio?: AspectRatio; watermark: string; watermarkOpacity: number; background: string };
+export type ExportOptions = { colorSpace?: OutputColorSpace; format: ExportFormat; quality: number; longEdge: number; aspectRatio?: AspectRatio; watermark: string; watermarkOpacity: number; background: string };
 export async function prepareExport(canvas: HTMLCanvasElement, project: StoredProject, options: ExportOptions, signal?: AbortSignal) {
   await renderStudio(canvas, { blob: project.imageBlob, adjustments: project.adjustments, geometry: { ...project.geometry, aspectRatio: options.aspectRatio ?? project.geometry.aspectRatio }, layers: project.layers, limit: options.longEdge }, signal);
   if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
@@ -10,7 +11,7 @@ export async function prepareExport(canvas: HTMLCanvasElement, project: StoredPr
     ctx.save(); ctx.globalAlpha = options.watermarkOpacity; ctx.textAlign = "right";
     ctx.font = `600 ${Math.max(12, canvas.width * .025)}px sans-serif`; ctx.fillStyle = "white"; ctx.shadowColor = "#000"; ctx.shadowBlur = Math.max(2, canvas.width * .003); ctx.fillText(options.watermark.slice(0,120), canvas.width * .97, canvas.height * .95, canvas.width * .9); ctx.restore();
   }
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, options.format, options.quality));
+  const blob = await encodeColorManaged(canvas, options.format, options.quality, options.colorSpace);
   if (!blob || blob.type !== options.format) throw new Error("This browser does not support the selected export format");
   if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
   return blob;

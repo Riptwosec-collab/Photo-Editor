@@ -78,11 +78,14 @@ export type Geometry = {
 };
 
 export type MaskStroke = { points: Array<{ x: number; y: number }>; radius: number; erase?: boolean };
-export type LayerMask = { kind: "all" | "radial" | "linear" | "brush" | "image"; dataUrl?: string; x: number; y: number; radius: number; feather: number; invert: boolean; strokes: MaskStroke[] };
+export type LayerMask = { kind: "all" | "radial" | "linear" | "brush" | "image"; edgeShift?: number; edgeContrast?: number; dataUrl?: string; x: number; y: number; radius: number; feather: number; invert: boolean; strokes: MaskStroke[] };
 export type EditorLayer = {
   id: string; name: string; kind: "adjustment" | "text" | "raster"; visible: boolean; opacity: number;
   adjustments: Partial<Adjustments>; mask: LayerMask;
-  lut?: CubeLut; channelCurves?: ChannelCurves; retouch?: { x: number; y: number; radius: number; sourceX: number; sourceY: number }[];
+  transform?: { x: number; y: number; scale: number; rotation: number };
+  retouchMode?: "clone" | "heal"; decontaminate?: number;
+  colorReplace?: { color: string; strength: number };
+  lut?: CubeLut; channelCurves?: ChannelCurves; retouch?: { x: number; y: number; radius: number; sourceX: number; sourceY: number; mode?: "clone" | "heal" }[];
   text?: string; color?: string; fontSize?: number; x?: number; y?: number; dataUrl?: string;
 };
 
@@ -163,7 +166,7 @@ export type ExportRecord = {
   width: number;
   height: number;
   filename: string;
-  colorSpace: "sRGB";
+  colorSpace: "sRGB" | "Display P3";
 };
 
 export type UserPreset = {
