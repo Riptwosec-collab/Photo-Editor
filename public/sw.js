@@ -8,7 +8,7 @@ self.addEventListener("fetch",event=>{
  const req=event.request,url=new URL(req.url);
  if(req.method!=="GET"||url.origin!==self.location.origin||req.headers.has("authorization"))return;
  const page=req.mode==="navigate"&&PAGES.has(url.pathname)&&!url.searchParams.has("code")&&!url.searchParams.has("token");
- const asset=url.pathname.startsWith("/_next/static/")||["/manifest.webmanifest","/icon.svg","/offline.html"].includes(url.pathname);
+ const asset=url.pathname.startsWith("/_next/static/")||["/manifest.webmanifest","/icon.svg","/icon-192.png","/icon-512.png","/icon-180.png","/offline.html"].includes(url.pathname);
  if(!page&&!asset)return;
  const key=page?url.origin+url.pathname:req;
  event.respondWith((async()=>{

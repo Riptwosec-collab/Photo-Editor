@@ -117,7 +117,7 @@ export function VersionPanel({ projectId, embedded = false }: { projectId: strin
           </article>
         ))}
       </div>
-      {compare.length>0&&<section className="version-comparison" aria-label="Version comparison">{versions.filter(v=>compare.includes(v.id)).map(v=><figure key={v.id}><RecipeThumbnail url={image?.objectUrl} adjustments={v.adjustments} geometry={v.geometry} layers={v.layers}/><figcaption>{v.name}</figcaption></figure>)}</section>}
+      {compare.length>0&&<section className="version-comparison" aria-label="Version comparison">{versions.filter(v=>compare.includes(v.id)).map(v=><figure key={v.id}><RecipeThumbnail limit={640} url={image?.objectUrl} adjustments={v.adjustments} geometry={v.geometry} layers={v.layers}/><figcaption>{v.name}</figcaption></figure>)}</section>}
       {projectId && !versions.length && <div className="mini-empty"> <T text={"No snapshots yet."} /> </div>}
     </div>
   );

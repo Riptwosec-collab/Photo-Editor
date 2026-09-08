@@ -17,6 +17,8 @@ import { Providers } from "@/components/providers";
 export const metadata: Metadata = {
   title: "LumaForge AI Studio",
   description: "Professional browser photo editing with transparent AI-assisted workflows.",
+  icons: { icon: "/icon-192.png", apple: "/icon-180.png" },
+  appleWebApp: { capable:true, title:"LumaForge", statusBarStyle:"black-translucent" },
   applicationName: "LumaForge AI Studio",
   generator: "LumaForge AI Studio",
 };
