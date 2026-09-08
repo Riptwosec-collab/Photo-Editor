@@ -100,6 +100,7 @@ function projectMetadata(project: StoredProject) {
     height: project.height,
     sizeBytes: project.imageBlob.size,
     source: "lumaforge-web",
+    album: project.album ?? "", tags: project.tags ?? [], trashedAt: project.trashedAt ?? null,
   };
 }
 
@@ -194,6 +195,9 @@ export async function pullCloudProject(
     },
     geometry: Object.fromEntries(Object.entries(DEFAULT_GEOMETRY).map(([key,value]) => [key, version?.geometry?.[key] ?? value])) as StoredProject["geometry"],
     layers: layersSchema.parse(version?.geometry?.layers ?? []),
+    album: typeof metadata.album === "string" ? metadata.album.slice(0,80) : undefined,
+    tags: Array.isArray(metadata.tags) ? metadata.tags.filter((t):t is string => typeof t === "string").slice(0,20).map(t=>t.slice(0,40)) : [],
+    trashedAt: typeof metadata.trashedAt === "string" ? metadata.trashedAt : undefined,
     archivedAt: cloud.status === "archived" ? cloud.updated_at : undefined,
   };
   await saveProject(project);
@@ -206,7 +210,7 @@ async function fingerprint(project: StoredProject) {
   const image = new Uint8Array(await project.imageBlob.arrayBuffer());
   const bytes = await crypto.subtle.digest("SHA-256", image);
   const hash = [...new Uint8Array(bytes)].map((n) => n.toString(16).padStart(2,"0")).join("");
-  const recipe = new TextEncoder().encode(JSON.stringify({ hash, name: project.name, adjustments: project.adjustments, geometry: project.geometry, layers: project.layers ?? [], archived: project.archivedAt ?? null }));
+  const recipe = new TextEncoder().encode(JSON.stringify({ hash, name: project.name, adjustments: project.adjustments, geometry: project.geometry, layers: project.layers ?? [], archived: project.archivedAt ?? null, album: project.album ?? "", tags: project.tags ?? [], trashedAt: project.trashedAt ?? null }));
   return [...new Uint8Array(await crypto.subtle.digest("SHA-256", recipe))].map((n) => n.toString(16).padStart(2,"0")).join("");
 }
 export function decideRevision(local: string, cloud: number, baseline?: { local: string; cloud: number }): SyncDecision {
@@ -219,7 +223,7 @@ export async function markConflictResolved(localId: string, userId: string, loca
   localStorage.setItem(`${BASELINE_KEY}:${userId}:revisions`,JSON.stringify(baseline));
 }
 export async function syncAllProjects(client: SupabaseClient, userId: string, onProgress?: (progress: SyncProgress) => void): Promise<SyncResult> {
-  const [locals, clouds] = await Promise.all([listProjects({ includeArchived: true }),listCloudProjects(client)]);
+  const [locals, clouds] = await Promise.all([listProjects({ includeArchived: true, includeTrashed: true }),listCloudProjects(client)]);
   const localMap = new Map(locals.map((p) => [p.id,p]));
   const cloudMap = new Map(clouds.map((p) => [p.local_id ?? p.id,p]));
   const ids = [...new Set([...localMap.keys(),...cloudMap.keys()])];

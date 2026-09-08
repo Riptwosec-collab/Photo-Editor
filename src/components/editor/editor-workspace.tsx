@@ -160,6 +160,7 @@ export function EditorWorkspace({ initialProjectId, initialTool }: { initialProj
           geometry,
           layers,
           archivedAt: existing?.archivedAt,
+          album: existing?.album, tags: existing?.tags, trashedAt: existing?.trashedAt,
         });
         if (useEditorStore.getState().image?.objectUrl === image.objectUrl) setCurrentProjectId(id);
         setSyncState("saved");

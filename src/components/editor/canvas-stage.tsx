@@ -93,7 +93,7 @@ export function CanvasStage() {
         const targets = compareMode === "grid" ? gridRefs.current.map((canvas, i) => ({ canvas, before: i % 2 === 0 })) : [{ canvas: originalRef.current, before: true }, { canvas: editedRef.current, before: false }];
         for (const { canvas, before } of targets) {
           if (controller.signal.aborted) return;
-          if (canvas) await renderStudio(canvas, { blob, adjustments: before ? DEFAULT_ADJUSTMENTS : adjustments, geometry, layers: before ? [] : layers, limit: compareMode === "grid" ? Math.min(900, limit) : limit }, controller.signal);
+          if (canvas) await renderStudio(canvas, { blob, sourceWidth:image.width,sourceHeight:image.height, adjustments: before ? DEFAULT_ADJUSTMENTS : adjustments, geometry, layers: before ? [] : layers, limit: compareMode === "grid" ? Math.min(900, limit) : limit }, controller.signal);
         }
       } catch (error) { if (!controller.signal.aborted) setRenderError(error instanceof Error ? error.message : "Render failed"); }
       finally { if (!controller.signal.aborted) setRendering(false); }

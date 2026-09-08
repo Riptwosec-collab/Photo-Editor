@@ -33,6 +33,9 @@ jobs:
       - name: Recovery, layers, batch ZIP and language
         if: ${{ !cancelled() }}
         run: npm run test:e2e -- e2e/recoverable-workflows.spec.ts
+      - name: Creative tools and recoverable library
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e -- e2e/creative-library.spec.ts
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

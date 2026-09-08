@@ -8,6 +8,7 @@ const ratioValues: Record<Exclude<AspectRatio, "original" | "free">, number> = {
   "1:1": 1,
   "4:5": 4 / 5,
   "16:9": 16 / 9,
+  "9:16": 9 / 16,
 };
 
 export function getCropRect(

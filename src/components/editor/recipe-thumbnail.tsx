@@ -12,8 +12,11 @@ export function RecipeThumbnail({ url, adjustments, geometry = DEFAULT_GEOMETRY,
     const controller = new AbortController();
     const canvas = ref.current;
     const parsed = JSON.parse(recipe);
-    void fetch(url, { signal: controller.signal }).then((r) => r.blob()).then((blob) => renderStudio(canvas, { blob, adjustments: { ...DEFAULT_ADJUSTMENTS, ...parsed.adjustments }, geometry: parsed.geometry, layers: parsed.layers, limit: 180 }, controller.signal)).catch(() => {});
-    return () => controller.abort();
+    const start = () => { void fetch(url, { signal: controller.signal }).then((r) => r.blob()).then((blob) => renderStudio(canvas, { blob, adjustments: { ...DEFAULT_ADJUSTMENTS, ...parsed.adjustments }, geometry: parsed.geometry, layers: parsed.layers, limit: 180 }, controller.signal)).catch(() => {}); };
+    if (typeof IntersectionObserver === "undefined") { start(); return () => controller.abort(); }
+    const observer = new IntersectionObserver(entries => { if(entries.some(e=>e.isIntersecting)) { observer.disconnect();start(); } }, {rootMargin:"100px"});
+    observer.observe(canvas);
+    return () => { observer.disconnect();controller.abort(); };
   }, [url, recipe]);
   return <canvas ref={ref} className="recipe-thumbnail" width={180} height={120} aria-label="Recipe thumbnail" />;
 }

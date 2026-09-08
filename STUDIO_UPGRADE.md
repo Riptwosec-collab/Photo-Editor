@@ -30,3 +30,23 @@ Set the variables documented in `.env.example` on the server. AI requires a Supa
 No live AI call was made and no live Supabase auth, storage, RLS or conflict test was possible without configured credentials. Existing database migrations are unchanged; layers are stored in edit-version geometry JSON. No production deployment or main merge was performed.
 
 UI translations cover the main workflows and controls; provider diagnostics, some technical labels and legacy descriptions retain their source language. Subject/face segmentation, face reshaping and marketplace payments are not implemented. Worker fallback runs on the main thread in older browsers. Browser storage is quota-limited and may be evicted; project backups remain the portable recovery method. Metadata sidecars do not preserve embedded ICC profiles. AI edits are uploaded at a maximum 1536px long edge, and raster outputs are positioned in the current cropped frame.
+
+## Creative/library upgrade — 8 September 2026
+
+Implemented in the follow-up to PR #4:
+
+- HEIC/HEIF import in the editor and batch queue. Native decoding is attempted first, then an on-demand heic2any decoder. Conversion produces a JPEG on the device, uses the first frame, and does not retain original EXIF or the HEIC container. Keep the source file separately. No real iPhone/HEIC fixture validation has been completed in this environment.
+- Five-point independent RGB channel curves, strict 3D `.cube` parsing (size 2–33), trilinear sampling, reversible LUT layers, intensity via opacity and up to 30 personal color recipes in IndexedDB. New layer data is preserved in drafts, portable backups and cloud versions.
+- Manual portrait layers for skin texture, shine reduction and face lighting. Clone blemishes uses a user-positioned clean source, feathered spots and undo. These tools do not detect faces or reshape identity.
+- Product, square post, vertical 9:16 story and profile templates. Crop changes and editable text layers are applied in one undoable snapshot.
+- Albums, tags, multi-field search, exact SHA-256 source duplicate detection and recoverable trash. Album/tag/trash metadata participates in cloud conflict detection. Trash retains original images and versions; it is not a permanent cloud purge.
+- A cancellable single-decode queue, lazy offscreen thumbnails and early canvas-buffer release. Editor previews request reduced decode dimensions for large originals, accounting for crop magnification. Full export retains the full decode path. These changes reduce work and peak concurrency but are not a guarantee that every device can export 48 MP.
+- Additional Thai/English creative/library controls and larger touch targets. Some legacy diagnostics retain English; real iPhone testing remains outstanding.
+- Optional semantic selection provider for person/sky/background/object. It must return a white-on-black raster mask, which is converted to alpha and can be refined with feather/invert/brush. Model credentials and an appropriate pinned version are required; no live segmentation quality claim is made.
+- Durable server-side AI allowance reservations, per-user daily job limits, shared daily estimated allowance, account-scoped usage history and recoverable provider receipts. Failed/uncertain attempts remain reserved to avoid accidental retry spending. The app's estimated allowance is not a cap on the provider's final bill; configure a hard provider spending limit independently.
+
+The additive `lumaforge_ai_usage_budget` migration was applied to the connected Supabase project. `supabase/tests/lumaforge_owner_budget.sql` passed against it: project/usage owner isolation, cross-owner write denial, per-account job limits and shared allowance enforcement. All synthetic test data was rolled back. Existing private storage policies were inspected. This does not certify a full browser login/upload/download or cross-device recovery session.
+
+Paid jobs fail closed until all values in `.env.example` are supplied (including the server-only Supabase service key, explicit allowance values, allowlisted users, provider token and pinned model versions). No credentials were committed, no paid model job was started, and no production promotion was performed. The repository contains an older legacy `0001_core_schema.sql` with a different project schema: do not blindly replay all historical migrations against a fresh/shared database. The connected project uses the timestamped cloud foundation schema.
+
+Validation: local lint, TypeScript, unit tests and production build; new Playwright scenarios cover template/RGB draft recovery, LUT application/rejection and library duplicate/trash recovery on desktop and mobile. Final CI status is recorded on PR #4.

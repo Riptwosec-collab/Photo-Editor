@@ -1,8 +1,13 @@
 import type { Adjustments, Geometry, EditorLayer } from "../editor/types";
 import { renderToCanvas } from "../editor/image-processing";
 import { compositeLayers } from "./layers";
-export type RenderRequest = { blob: Blob; adjustments: Adjustments; geometry: Geometry; layers?: EditorLayer[]; limit: number };
+export type RenderRequest = { blob: Blob; adjustments: Adjustments; geometry: Geometry; layers?: EditorLayer[]; sourceWidth?:number; sourceHeight?:number; limit: number };
+import { renderQueue } from "./render-queue";
 export async function renderStudio(canvas: HTMLCanvasElement, request: RenderRequest, signal?: AbortSignal) {
+ const release=await renderQueue.acquire(signal);
+ try { return await renderNow(canvas,request,signal); } finally { release(); }
+}
+async function renderNow(canvas: HTMLCanvasElement, request: RenderRequest, signal?: AbortSignal) {
   if (signal?.aborted) throw new DOMException("Render cancelled", "AbortError");
   if (typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined") {
     try {
