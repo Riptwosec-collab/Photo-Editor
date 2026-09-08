@@ -2,6 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { DraftManager } from "./studio/draft-manager";
+import { PreferencesEffects } from "./studio/preferences-effects";
 import { PwaRegistration } from "./pwa-registration";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -11,6 +13,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <PwaRegistration />
+      <PreferencesEffects /><DraftManager />
       {children}
     </QueryClientProvider>
   );

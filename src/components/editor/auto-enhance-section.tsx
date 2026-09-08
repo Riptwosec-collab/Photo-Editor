@@ -1,6 +1,8 @@
 "use client";
+import { T } from "@/features/i18n/text";
 
-import { useRef } from "react";
+
+import { useRef, useState } from "react";
 import { RotateCcw, Save, Sparkles } from "lucide-react";
 import { AUTO_ENHANCE_RECIPES, scaleRecipe } from "@/features/editor/intelligence";
 import { useEditorStore } from "@/features/editor/store";
@@ -27,15 +29,15 @@ const modes: Array<{ value: AutoEnhanceMode; label: string }> = [
 ];
 
 const selectiveLabels: Array<[SelectiveTarget, string]> = [
-  ["subject", "Subject"], ["face", "Face"], ["skin", "Skin"], ["eyes", "Eyes"], ["hair", "Hair"],
-  ["clothing", "Clothing"], ["background", "Background"], ["colors", "Colors"], ["exposure", "Exposure"], ["crop", "Crop"],
+  ["colors", "Colors"], ["exposure", "Exposure"],
 ];
 const lockLabels: Array<[LockTarget, string]> = [
-  ["identity", "Lock identity"], ["skinTone", "Lock skin tone"], ["background", "Lock background"],
-  ["face", "Lock face"], ["colors", "Lock colors"], ["crop", "Lock crop"],
+  ["skinTone", "Keep warmth and orange settings"], ["colors", "Keep color settings"],
 ];
 
 export function AutoEnhanceSection({ onNotice }: { onNotice: (message: string) => void }) {
+  const [useMask, setUseMask] = useState(false);
+  const activeLayer = useEditorStore((state) => state.layers.find((layer) => layer.id === state.activeLayerId && layer.kind === "adjustment"));
   const image = useEditorStore((state) => state.image);
   const adjustments = useEditorStore((state) => state.adjustments);
   const apply = useEditorStore((state) => state.applyAdjustments);
@@ -59,11 +61,11 @@ export function AutoEnhanceSection({ onNotice }: { onNotice: (message: string) =
     if ((!selective.skin && !selective.face) || locks.skinTone) remove("temperature", "tint", "orangeHue", "orangeSaturation", "orangeLuminance");
     if (!selective.background || locks.background) remove("dehaze", "vignette");
     if (locks.identity || locks.face) remove("texture", "clarity");
-    return scaleRecipe(adjustments, recipe, intensity);
+    return scaleRecipe(useMask && activeLayer ? { ...adjustments, ...activeLayer.adjustments } : adjustments, recipe, intensity);
   }
 
   function beginPreview(targetMode: AutoEnhanceMode) {
-    if (!image || previewSnapshot.current) return;
+    if (!image || previewSnapshot.current || (useMask && activeLayer)) return;
     previewSnapshot.current = { ...adjustments };
     const recipe = filteredRecipe(targetMode);
     for (const [key, value] of Object.entries(recipe)) preview(key as AdjustmentKey, Number(value));
@@ -78,7 +80,8 @@ export function AutoEnhanceSection({ onNotice }: { onNotice: (message: string) =
   function applyMode(targetMode = mode) {
     endPreview();
     setMode(targetMode);
-    apply(filteredRecipe(targetMode));
+    if (useMask && activeLayer) useEditorStore.getState().updateLayer(activeLayer.id, { adjustments: { ...activeLayer.adjustments, ...filteredRecipe(targetMode) } });
+    else apply(filteredRecipe(targetMode));
     onNotice(`${targetMode} auto enhance applied`);
   }
 
@@ -114,17 +117,19 @@ export function AutoEnhanceSection({ onNotice }: { onNotice: (message: string) =
             onBlur={endPreview}
             onClick={() => applyMode(option.value)}
           >
-            {option.label}
+            <T text={option.label} />
           </button>
         ))}
       </div>
-      <label className="compact-slider-label"><span>Intensity</span><output>{intensity}%</output><input type="range" min="0" max="100" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
-      <div className="exact-change-summary"><strong>Exact settings</strong><span>{Object.entries(filteredRecipe(mode)).slice(0, 6).map(([key, value]) => `${key} ${Number(value).toFixed(1)}`).join(" · ")}</span></div>
-      <div className="auto-actions"><button className="button primary" disabled={!image} onClick={() => applyMode()}><Sparkles size={15} /> Apply mode</button><button className="button" onClick={() => void saveAsPreset()} disabled={!image}><Save size={15} /> Save preset</button><button className="icon-button" title="Reset Auto Enhance settings" onClick={() => resetSection(changedKeys)}><RotateCcw size={14} /></button></div>
+      <label className="compact-slider-label"><span> <T text={"Intensity"} /> </span><output>{intensity}%</output><input type="range" min="0" max="100" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
+      <div className="exact-change-summary"><strong> <T text={"Exact settings"} /> </strong><span>{Object.entries(filteredRecipe(mode)).slice(0, 6).map(([key, value]) => `${key} ${Number(value).toFixed(1)}`).join(" · ")}</span></div>
+      <div className="auto-actions"><button className="button primary" disabled={!image} onClick={() => applyMode()}><Sparkles size={15} /> <T text={"Apply mode"} /> </button><button className="button" onClick={() => void saveAsPreset()} disabled={!image}><Save size={15} /> <T text={"Save preset"} /> </button><button className="icon-button" title="Reset Auto Enhance settings" onClick={() => resetSection(changedKeys)}><RotateCcw size={14} /></button></div>
 
+      <p className="muted"><T text="Recipes adjust the whole image. Select an adjustment layer to apply through its mask." /></p>
+      {activeLayer && <Toggle label="Apply to selected layer" checked={useMask} onChange={() => { endPreview(); setUseMask(!useMask); }} />}
       <div className="selective-enhance-grid">
-        <div><strong>Selective Enhance</strong>{selectiveLabels.map(([target, label]) => <Toggle key={target} label={label} checked={selective[target]} onChange={() => toggleSelective(target)} />)}</div>
-        <div><strong>Protection Locks</strong>{lockLabels.map(([target, label]) => <Toggle key={target} label={label} checked={locks[target]} onChange={() => toggleLock(target)} />)}</div>
+        <div><strong> <T text={"Selective Enhance"} /> </strong>{selectiveLabels.map(([target, label]) => <Toggle key={target} label={label} checked={selective[target]} onChange={() => toggleSelective(target)} />)}</div>
+        <div><strong> <T text={"Protection Locks"} /> </strong>{lockLabels.map(([target, label]) => <Toggle key={target} label={label} checked={locks[target]} onChange={() => toggleLock(target)} />)}</div>
       </div>
     </div>
   );

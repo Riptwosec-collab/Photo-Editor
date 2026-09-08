@@ -8,6 +8,7 @@ const ratioValues: Record<Exclude<AspectRatio, "original" | "free">, number> = {
   "1:1": 1,
   "4:5": 4 / 5,
   "16:9": 16 / 9,
+  "9:16": 9 / 16,
 };
 
 export function getCropRect(
@@ -345,7 +346,7 @@ export function applyDetailFilters(
 }
 
 export function applyVignette(
-  context: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   width: number,
   height: number,
   amount: number,
@@ -369,11 +370,13 @@ export function applyVignette(
   context.restore();
 }
 
+import { projectivePixels } from "../render/pro-tools";
+
 export function renderToCanvas(
   source: CanvasImageSource,
   sourceWidth: number,
   sourceHeight: number,
-  canvas: HTMLCanvasElement,
+  canvas: HTMLCanvasElement | OffscreenCanvas,
   input: Adjustments,
   inputGeometry: Geometry = DEFAULT_GEOMETRY,
   maxDimension = 1800,
@@ -389,7 +392,7 @@ export function renderToCanvas(
   const height = Math.max(1, Math.round(visualHeight * scale));
   canvas.width = width;
   canvas.height = height;
-  const context = canvas.getContext("2d", { willReadFrequently: true });
+  const context = canvas.getContext("2d", { willReadFrequently: true, colorSpace: "srgb" }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
   if (!context) throw new Error("Canvas 2D is unavailable");
 
   const rotation = geometry.rotation + geometry.straighten;
@@ -398,7 +401,7 @@ export function renderToCanvas(
   context.save();
   context.translate(width / 2, height / 2);
   context.rotate((rotation * Math.PI) / 180);
-  context.transform(1, shearY, shearX, 1, 0, 0);
+  if (geometry.perspectiveMode !== "projective") context.transform(1, shearY, shearX, 1, 0, 0);
   context.scale(geometry.flipX ? -1 : 1, geometry.flipY ? -1 : 1);
   context.drawImage(
     source,
@@ -414,6 +417,7 @@ export function renderToCanvas(
   context.restore();
 
   const data = context.getImageData(0, 0, width, height);
+  if(geometry.perspectiveMode === "projective" && (geometry.perspectiveX || geometry.perspectiveY)) data.data.set(projectivePixels(data,geometry.perspectiveX,geometry.perspectiveY));
   const colorAdjusted = processImageData(data, adjustments);
   context.putImageData(
     applyDetailFilters(

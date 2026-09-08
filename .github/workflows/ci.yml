@@ -13,6 +13,9 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Production offline recovery
+        run: npx playwright test --config playwright.production.config.ts
   e2e:
     runs-on: ubuntu-latest
     steps:
@@ -21,11 +24,27 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium webkit
       - name: Desktop Chromium release flow
-        run: npm run test:e2e -- e2e/editor.spec.ts --project=chromium
+        run: npm run test:e2e -- e2e/editor.spec.ts --output=test-results/editor --project=chromium
       - name: Mobile Pixel release flow
-        run: npm run test:e2e -- e2e/mobile-editor.spec.ts --project=mobile
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e -- e2e/mobile-editor.spec.ts --output=test-results/mobile-editor --project=mobile
+      - name: Studio navigation and image analysis
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e -- e2e/studio-upgrade.spec.ts --output=test-results/studio-upgrade
+      - name: Recovery, layers, batch ZIP and language
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e -- e2e/recoverable-workflows.spec.ts --output=test-results/recoverable-workflows
+      - name: Creative tools and recoverable library
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e -- e2e/creative-library.spec.ts --output=test-results/creative-library
+      - name: Refine tools and Safari mobile
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e -- e2e/refine-tools.spec.ts --output=test-results/refine-tools
+      - name: Pro workflow and layer controls
+        if: ${{ !cancelled() }}
+        run: npm run test:e2e -- e2e/pro-workflows.spec.ts --output=test-results/pro-workflows
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

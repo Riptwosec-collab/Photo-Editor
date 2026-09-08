@@ -1,3 +1,4 @@
+import type { CubeLut, ChannelCurves } from "./color-tools";
 export type AdjustmentKey = keyof Adjustments;
 
 export type Adjustments = {
@@ -60,9 +61,10 @@ export type Adjustments = {
   magentaLuminance: number;
 };
 
-export type AspectRatio = "original" | "free" | "1:1" | "4:5" | "16:9";
+export type AspectRatio = "original" | "free" | "1:1" | "4:5" | "16:9" | "9:16";
 
 export type Geometry = {
+  perspectiveMode?: "shear" | "projective";
   rotation: 0 | 90 | 180 | 270;
   flipX: boolean;
   flipY: boolean;
@@ -76,7 +78,21 @@ export type Geometry = {
   perspectiveY: number;
 };
 
+export type MaskStroke = { points: Array<{ x: number; y: number }>; radius: number; erase?: boolean };
+export type LayerMask = { kind: "all" | "radial" | "linear" | "brush" | "image"; edgeShift?: number; edgeContrast?: number; dataUrl?: string; x: number; y: number; radius: number; feather: number; invert: boolean; strokes: MaskStroke[] };
+export type EditorLayer = {
+  id: string; name: string; kind: "adjustment" | "text" | "raster"; visible: boolean; opacity: number;
+  adjustments: Partial<Adjustments>; mask: LayerMask;
+  transform?: { x: number; y: number; scale: number; rotation: number };
+  locked?: boolean; group?: string; textAlign?: "left" | "center" | "right";
+  replaceBase?: boolean; retouchMode?: "clone" | "heal"; decontaminate?: number;
+  colorReplace?: { color: string; strength: number };
+  lut?: CubeLut; channelCurves?: ChannelCurves; retouch?: { x: number; y: number; radius: number; sourceX: number; sourceY: number; mode?: "clone" | "heal" }[];
+  text?: string; color?: string; fontSize?: number; x?: number; y?: number; dataUrl?: string;
+};
+
 export type EditorSnapshot = {
+  layers?: EditorLayer[];
   adjustments: Adjustments;
   geometry: Geometry;
 };
@@ -112,6 +128,7 @@ export type AiEditPlan = {
 };
 
 export type StoredProject = {
+  layers?: EditorLayer[];
   id: string;
   name: string;
   createdAt: string;
@@ -124,9 +141,13 @@ export type StoredProject = {
   adjustments: Adjustments;
   geometry: Geometry;
   archivedAt?: string;
+  trashedAt?: string; album?: string; tags?: string[];
 };
 
 export type StoredVersion = {
+  layers?: EditorLayer[];
+  parentVersionId?: string;
+  thumbnail?: string;
   id: string;
   projectId: string;
   name: string;
@@ -148,10 +169,12 @@ export type ExportRecord = {
   width: number;
   height: number;
   filename: string;
-  colorSpace: "sRGB";
+  colorSpace: "sRGB" | "Display P3";
 };
 
 export type UserPreset = {
+  favorite?: boolean;
+  folder?: string;
   id: string;
   name: string;
   description: string;

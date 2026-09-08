@@ -1,6 +1,8 @@
 "use client";
+import { T } from "@/features/i18n/text";
 
-import { useRef, useState } from "react";
+
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   CircleCheck,
@@ -13,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useEditorStore } from "@/features/editor/store";
+import { analyzeImage, type PixelAnalysis } from "@/features/ai/pixel-analysis";
 import { DIRECTOR_RECIPES, scaleRecipe } from "@/features/editor/intelligence";
 import { useStudioStore, type DirectorDirection } from "@/features/studio/store";
 import { ProgressBar, SegmentedControl } from "@/components/ui/editor-controls";
@@ -26,10 +29,10 @@ const directions: Array<{ value: DirectorDirection; label: string }> = [
 
 const steps = [
   { id: "lighting", name: "Correct mixed lighting", detail: "Balance white point and tonal endpoints", enabled: true },
-  { id: "shadows", name: "Lift subject shadows", detail: "Recover detail without flattening contrast", enabled: true },
-  { id: "skin", name: "Protect skin tones", detail: "Limit warmth and preserve texture", enabled: true },
+  { id: "shadows", name: "Lift image shadows", detail: "Recover detail without flattening contrast", enabled: true },
+  { id: "skin", name: "Adjust orange tones", detail: "Limit warmth and preserve texture", enabled: true },
   { id: "remove", name: "Remove distracting background sign", detail: "Requires a connected generative provider", enabled: false },
-  { id: "separation", name: "Increase subject separation", detail: "Presence, dehaze and vignette", enabled: true },
+  { id: "separation", name: "Increase tonal separation", detail: "Presence, dehaze and vignette", enabled: true },
   { id: "grade", name: "Apply creative color grade", detail: "Direction-aware split tone", enabled: true },
   { id: "crop", name: "Optimize for Instagram 4:5", detail: "Non-destructive centered crop", enabled: true },
 ] as const;
@@ -37,8 +40,7 @@ const steps = [
 export function AiDirectorSection({ onNotice }: { onNotice: (message: string) => void }) {
   const image = useEditorStore((state) => state.image);
   const adjustments = useEditorStore((state) => state.adjustments);
-  const apply = useEditorStore((state) => state.applyAdjustments);
-  const setAspectRatio = useEditorStore((state) => state.setAspectRatio);
+  const restore = useEditorStore((state) => state.restoreSnapshot);
   const direction = useStudioStore((state) => state.directorDirection);
   const setDirection = useStudioStore((state) => state.setDirectorDirection);
   const status = useStudioStore((state) => state.aiStatus);
@@ -51,6 +53,8 @@ export function AiDirectorSection({ onNotice }: { onNotice: (message: string) =>
   );
   const [planVisible, setPlanVisible] = useState(false);
   const runToken = useRef(0);
+  const [measurement, setMeasurement] = useState<{ url: string; result: PixelAnalysis } | null>(null);
+  useEffect(() => () => { runToken.current += 1; }, []);
 
   async function analyze() {
     if (!image) {
@@ -61,19 +65,15 @@ export function AiDirectorSection({ onNotice }: { onNotice: (message: string) =>
     runToken.current = token;
     setPlanVisible(false);
     setOperation("analyzing", 5, "Sampling current tonal and color state…");
-    const checkpoints: Array<[number, string]> = [
-      [22, "Checking exposure distribution…"],
-      [41, "Evaluating color cast and skin-safe limits…"],
-      [63, "Building direction-aware edit steps…"],
-      [84, "Validating non-destructive operations…"],
-      [100, "Plan ready"],
-    ];
-    for (const [value, label] of checkpoints) {
-      await new Promise((resolve) => window.setTimeout(resolve, 210));
-      if (runToken.current !== token) return;
-      setOperation(value === 100 ? "planned" : "analyzing", value, label);
+    try {
+      const result = await analyzeImage(image.objectUrl);
+      if (runToken.current !== token || useEditorStore.getState().image?.objectUrl !== image.objectUrl) return;
+      setMeasurement({ url: image.objectUrl, result });
+      setOperation("planned", 100, "Plan ready");
+      setPlanVisible(true);
+    } catch (error) {
+      if (runToken.current === token) setOperation("error", 0, error instanceof Error ? error.message : "Analysis failed");
     }
-    setPlanVisible(true);
   }
 
   function cancel() {
@@ -83,21 +83,10 @@ export function AiDirectorSection({ onNotice }: { onNotice: (message: string) =>
 
   async function applyPlan() {
     if (!image) return;
-    const token = runToken.current + 1;
-    runToken.current = token;
-    setOperation("applying", 12, "Applying selected adjustments…");
-    for (const [value, label] of [
-      [36, "Balancing light…"],
-      [58, "Protecting skin texture…"],
-      [78, "Applying creative direction…"],
-      [100, "Director edit completed"],
-    ] as Array<[number, string]>) {
-      await new Promise((resolve) => window.setTimeout(resolve, 170));
-      if (runToken.current !== token) return;
-      setOperation(value === 100 ? "completed" : "applying", value, label);
-    }
-    const recipe = { ...DIRECTOR_RECIPES[direction] };
+    const measured = measurement?.url === image.objectUrl ? measurement.result.changes : {};
+    const recipe = { ...DIRECTOR_RECIPES[direction], ...measured };
     if (!selected.lighting) {
+      delete recipe.exposure;
       delete recipe.temperature;
       delete recipe.tint;
       delete recipe.highlights;
@@ -122,8 +111,9 @@ export function AiDirectorSection({ onNotice }: { onNotice: (message: string) =>
       delete recipe.highlightSaturation;
       delete recipe.grain;
     }
-    apply(scaleRecipe(adjustments, recipe, intensity));
-    if (selected.crop) setAspectRatio("4:5");
+    const current = useEditorStore.getState();
+    restore({ adjustments: { ...adjustments, ...scaleRecipe(adjustments, recipe, intensity) }, geometry: { ...current.geometry, ...(selected.crop ? { aspectRatio: "4:5" as const } : {}) }, layers: current.layers });
+    setOperation("completed", 100, "Director edit completed");
     onNotice(`AI Director ${direction} plan applied as one undoable edit`);
   }
 
@@ -136,23 +126,24 @@ export function AiDirectorSection({ onNotice }: { onNotice: (message: string) =>
         })}
       </div>
 
+      {measurement && measurement.url === image?.objectUrl && <p className="muted">Mean luminance: {measurement?.result.luminance.toFixed(1)} / 255 · {measurement?.result.samples.toLocaleString()} samples</p>}
       <SegmentedControl value={direction} options={directions} onChange={setDirection} ariaLabel="Creative direction" />
 
-      <label className="compact-slider-label"><span>Plan intensity</span><output>{intensity}%</output><input type="range" min="0" max="100" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
+      <label className="compact-slider-label"><span> <T text={"Plan intensity"} /> </span><output>{intensity}%</output><input type="range" min="0" max="100" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
 
       {(status === "analyzing" || status === "applying") && (
         <div className="operation-card">
           <div className="analysis-wave" aria-hidden="true"><span /><span /><span /><span /><span /></div>
           <ProgressBar value={progress} label={message} />
-          <button className="text-button danger" onClick={cancel}><X size={13} /> Cancel</button>
+          <button className="text-button danger" onClick={cancel}><X size={13} /> <T text={"Cancel"} /> </button>
         </div>
       )}
 
-      {status === "error" && <div className="inline-error"><TriangleAlert size={14} />{message}<button onClick={() => void analyze()}><RefreshCw size={13} /> Retry</button></div>}
+      {status === "error" && <div className="inline-error"><TriangleAlert size={14} />{message}<button onClick={() => void analyze()}><RefreshCw size={13} /> <T text={"Retry"} /> </button></div>}
 
       {(planVisible || status === "planned" || status === "completed") && (
         <div className="director-plan-list">
-          <div className="plan-summary"><div><Sparkles size={15} /><strong>{direction[0].toUpperCase() + direction.slice(1)} edit plan</strong></div><span>{steps.filter((step) => selected[step.id] && step.enabled).length} changes</span></div>
+          <div className="plan-summary"><div><Sparkles size={15} /><strong>{direction[0].toUpperCase() + direction.slice(1)} edit plan</strong></div><span>{steps.filter((step) => selected[step.id] && step.enabled).length} <T text={"changes"} /> </span></div>
           {steps.map((step) => (
             <button
               type="button"
@@ -165,14 +156,14 @@ export function AiDirectorSection({ onNotice }: { onNotice: (message: string) =>
               <span><strong>{step.name}</strong><small>{step.detail}</small></span>
             </button>
           ))}
-          <div className="identity-protection-row"><ShieldCheck size={14} /><span>Identity preservation and skin texture protection are locked.</span></div>
+          <div className="identity-protection-row"><ShieldCheck size={14} /><span>Global pixel analysis and recipe adjustments. Use Layers & Masks for local edits.</span></div>
         </div>
       )}
 
       <div className="director-actions">
-        <button className="button" onClick={() => void analyze()} disabled={status === "analyzing" || status === "applying"}>{status === "analyzing" ? <LoaderCircle className="spin" size={15} /> : <Play size={15} />} Analyze</button>
-        <button className="button" onClick={() => setPlanVisible(true)} disabled={status !== "planned" && !planVisible}><CircleCheck size={15} /> Review plan</button>
-        <button className="button primary" onClick={() => void applyPlan()} disabled={!image || status === "analyzing" || status === "applying"}><Sparkles size={15} /> Apply selected</button>
+        <button className="button" onClick={() => void analyze()} disabled={status === "analyzing" || status === "applying"}>{status === "analyzing" ? <LoaderCircle className="spin" size={15} /> : <Play size={15} />} <T text={"Analyze"} /> </button>
+        <button className="button" onClick={() => setPlanVisible(true)} disabled={status !== "planned" && !planVisible}><CircleCheck size={15} /> <T text={"Review plan"} /> </button>
+        <button className="button primary" onClick={() => void applyPlan()} disabled={!image || status === "analyzing" || status === "applying"}><Sparkles size={15} /> <T text={"Apply selected"} /> </button>
       </div>
     </div>
   );

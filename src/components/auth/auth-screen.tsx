@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useState } from "react";
 import type { FormEvent } from "react";
@@ -46,15 +48,15 @@ export function AuthScreen() {
       <main className="auth-page">
         <section className="auth-card">
           <span className="kicker">Account foundation</span>
-          <h1>Choose how to continue</h1>
+          <h1> <T text={"Choose how to continue"} /> </h1>
           <p>Guest mode is fully local. Supabase magic-link authentication activates only when real environment variables are configured.</p>
 
           {profile ? (
-            <div className="signed-session"><UserRound /><div><strong>{profile.displayName}</strong><small>Local guest session</small></div><button className="button" onClick={signOut}>Sign out</button></div>
+            <div className="signed-session"><UserRound /><div><strong>{profile.displayName}</strong><small> <T text={"Local guest session"} /> </small></div><button className="button" onClick={signOut}> <T text={"Sign out"} /> </button></div>
           ) : (
             <div className="auth-section">
-              <label>Display name<input value={displayName} maxLength={60} onChange={(event) => setDisplayName(event.target.value)} /></label>
-              <button className="button primary" onClick={startGuest}><UserRound size={17} /> Continue in guest mode <ArrowRight size={16} /></button>
+              <label> <T text={"Display name"} /> <input value={displayName} maxLength={60} onChange={(event) => setDisplayName(event.target.value)} /></label>
+              <button className="button primary" onClick={startGuest}><UserRound size={17} /> <T text={"Continue in guest mode"} /> <ArrowRight size={16} /></button>
               <small>Projects remain on this browser until cloud sync is configured.</small>
             </div>
           )}
@@ -63,8 +65,8 @@ export function AuthScreen() {
 
           <form className="auth-section" onSubmit={(event) => void requestMagicLink(event)}>
             <div className={configured ? "provider-state ready" : "provider-state"}>{configured ? <Mail size={15} /> : <CloudOff size={15} />}{configured ? "Supabase connected" : "Supabase not configured"}</div>
-            <label>Email<input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" disabled={!configured} /></label>
-            <button className="button" type="submit" disabled={!configured || loading}>{loading ? <LoaderCircle className="spin" size={16} /> : <Mail size={16} />} Send magic link</button>
+            <label> <T text={"Email"} /> <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" disabled={!configured} /></label>
+            <button className="button" type="submit" disabled={!configured || loading}>{loading ? <LoaderCircle className="spin" size={16} /> : <Mail size={16} />} <T text={"Send magic link"} /> </button>
             {status && <p role="status" className="auth-status">{status}</p>}
           </form>
         </section>

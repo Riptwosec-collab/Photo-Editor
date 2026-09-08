@@ -1,10 +1,14 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronUp, Film } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { AiAssistantPanel } from "./ai-assistant-panel";
+import { RecoveryPanel } from "./recovery-panel";
+import { useDraftStatus } from "../studio/draft-manager";
 import { CanvasStage } from "./canvas-stage";
 import { EditorTopToolbar } from "./top-toolbar";
 import { Filmstrip } from "./filmstrip";
@@ -13,12 +17,18 @@ import { PresetStrip } from "./preset-strip";
 import { ProInspector } from "./pro-inspector";
 import { DEFAULT_ADJUSTMENTS, DEFAULT_GEOMETRY } from "@/features/editor/defaults";
 import { useEditorStore } from "@/features/editor/store";
+import { usePreferences } from "@/features/studio/preferences";
 import { useStudioStore } from "@/features/studio/store";
 import { getProject, saveProject } from "@/lib/idb";
 import { cn } from "@/lib/cn";
 
-export function EditorWorkspace({ initialProjectId }: { initialProjectId?: string }) {
+export function EditorWorkspace({ initialProjectId, initialTool }: { initialProjectId?: string; initialTool?: string }) {
   const router = useRouter();
+  const draft = useDraftStatus();
+  const layers = useEditorStore((s) => s.layers);
+  const focusMode = usePreferences((s) => s.focusMode);
+  const toggleFocus = usePreferences((s) => s.toggleFocus);
+  const autosave = usePreferences((s) => s.autosave);
   const image = useEditorStore((state) => state.image);
   const currentProjectId = useEditorStore((state) => state.currentProjectId);
   const adjustments = useEditorStore((state) => state.adjustments);
@@ -42,6 +52,7 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   const [loadingProject, setLoadingProject] = useState(Boolean(initialProjectId));
   const loadedObjectUrl = useRef<string | null>(null);
   const lastImportedName = useRef<string | null>(null);
+  const pendingSave = useRef<Promise<string | null> | null>(null);
   const noticeTimer = useRef<number | null>(null);
 
   const showNotice = useCallback((message: string) => {
@@ -67,6 +78,14 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   }, [setAssistantCollapsed, setInspectorCollapsed]);
 
   useEffect(() => {
+    if (initialTool === "assistant") setAssistantCollapsed(false);
+    else if (initialTool && ["layers", "light", "color", "auto-enhance", "ai-director", "reverse-preset", "color-consistency"].includes(initialTool)) {
+      setInspectorCollapsed(false);
+      setActiveInspectorSection(initialTool);
+    }
+  }, [initialTool, setAssistantCollapsed, setInspectorCollapsed, setActiveInspectorSection]);
+
+  useEffect(() => {
     if (!initialProjectId) return;
     let cancelled = false;
     void getProject(initialProjectId)
@@ -88,6 +107,7 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
         loadRecipe(
           { ...DEFAULT_ADJUSTMENTS, ...project.adjustments },
           { ...DEFAULT_GEOMETRY, ...project.geometry },
+          project.layers,
         );
         setSyncState("saved");
         showNotice(`Opened ${project.name}`);
@@ -99,7 +119,7 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
       .finally(() => setLoadingProject(false));
     return () => {
       cancelled = true;
-      if (loadedObjectUrl.current) URL.revokeObjectURL(loadedObjectUrl.current);
+      // The editor store may continue using the loaded image after route navigation.
     };
   }, [initialProjectId, loadRecipe, setCurrentProjectId, setImage, showNotice]);
 
@@ -117,6 +137,8 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
   const persistProject = useCallback(
     async (silent = false) => {
       if (!image) return null;
+      if (pendingSave.current) return pendingSave.current;
+      const operation = (async () => {
       setSyncState("saving");
       if (!silent) showNotice("Saving project to this device…");
       try {
@@ -136,9 +158,11 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           height: image.height,
           adjustments,
           geometry,
+          layers,
           archivedAt: existing?.archivedAt,
+          album: existing?.album, tags: existing?.tags, trashedAt: existing?.trashedAt,
         });
-        setCurrentProjectId(id);
+        if (useEditorStore.getState().image?.objectUrl === image.objectUrl) setCurrentProjectId(id);
         setSyncState("saved");
         if (!silent) showNotice("Project saved locally with image and non-destructive recipe");
         return id;
@@ -147,21 +171,24 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
         showNotice(error instanceof Error ? error.message : "Project save failed");
         return null;
       }
+      })();
+      pendingSave.current = operation;
+      try { return await operation; } finally { pendingSave.current = null; }
     },
-    [adjustments, currentProjectId, geometry, image, projectName, setCurrentProjectId, showNotice],
+    [layers, adjustments, currentProjectId, geometry, image, projectName, setCurrentProjectId, showNotice],
   );
 
   useEffect(() => {
-    if (!image || !currentProjectId || loadingProject) return;
+    if (!autosave || !image || !currentProjectId || loadingProject) return;
     const timer = window.setTimeout(() => void persistProject(true), 1400);
     return () => window.clearTimeout(timer);
-  }, [adjustments, currentProjectId, geometry, image, loadingProject, persistProject, projectName]);
+  }, [layers, autosave, adjustments, currentProjectId, geometry, image, loadingProject, persistProject, projectName]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
-      const editingText = target?.matches("input,textarea,select,[contenteditable=true]");
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
+      const editingText = target?.matches('input:not([type="range"]):not([type="checkbox"]),textarea,select,[contenteditable=true]');
+      if (!editingText && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) redo();
         else undo();
@@ -170,11 +197,12 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
         event.preventDefault();
         void persistProject(false);
       }
+      if (!editingText && event.key === "Escape" && focusMode) toggleFocus();
       if (!editingText && event.key === "\\") toggleOriginal();
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [persistProject, redo, toggleOriginal, undo]);
+  }, [persistProject, redo, toggleOriginal, undo, focusMode, toggleFocus]);
 
   async function openExportCenter() {
     if (!image) return;
@@ -194,11 +222,13 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
       <div
         className={cn(
           "professional-editor-shell",
+          focusMode && "focus-mode",
           assistantCollapsed && "assistant-collapsed",
           inspectorCollapsed && "inspector-collapsed",
           filmstripCollapsed && "filmstrip-collapsed",
         )}
       >
+        <button className="focus-toggle" onClick={toggleFocus}><T text={focusMode ? "Show panels" : "Focus"} /></button>
         <EditorTopToolbar
           projectName={projectName}
           onProjectNameChange={(name) => {
@@ -212,25 +242,25 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           onNotice={showNotice}
         />
 
-        <AiAssistantPanel onNotice={showNotice} />
+        <AiAssistantPanel key={image?.objectUrl ?? "empty"} onNotice={showNotice} />
 
         <main className="professional-editor-main">
           {loadingProject ? (
-            <div className="import-wrap"><div className="loading-card">Opening saved project and recipe…</div></div>
+            <div className="import-wrap"><div className="loading-card"> <T text={"Opening saved project and recipe…"} /> </div></div>
           ) : image ? (
             <>
               <CanvasStage />
               <div className="quick-preset-dock"><PresetStrip /></div>
             </>
           ) : (
-            <ImportZone />
+            <div className="import-and-recovery"><ImportZone /><RecoveryPanel /></div>
           )}
         </main>
 
         <ProInspector projectId={currentProjectId} onNotice={showNotice} />
 
         {filmstripCollapsed ? (
-          <button className="filmstrip-collapsed-rail" onClick={() => setFilmstripCollapsed(false)}><Film size={15} /> Filmstrip <ChevronUp size={14} /></button>
+          <button className="filmstrip-collapsed-rail" onClick={() => setFilmstripCollapsed(false)}><Film size={15} /> <T text={"Filmstrip"} /> <ChevronUp size={14} /></button>
         ) : (
           <div className="filmstrip-region">
             <button className="filmstrip-collapse-toggle" title="Collapse filmstrip" aria-label="Collapse filmstrip" onClick={() => setFilmstripCollapsed(true)}><ChevronUp size={14} /></button>
@@ -238,7 +268,8 @@ export function EditorWorkspace({ initialProjectId }: { initialProjectId?: strin
           </div>
         )}
 
-        {notice && <div className="toast professional-toast" role="status">{notice}</div>}
+        {image && <div className="draft-status" role="status"><T text={draft.pending ? "Saving draft…" : draft.message} /></div>}
+        {notice && <div className="toast professional-toast" role="status"><T text={notice} /></div>}
       </div>
     </AppShell>
   );

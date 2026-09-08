@@ -1,0 +1,9 @@
+"use client";
+/* eslint-disable @next/next/no-html-link-for-pages -- Full navigations warm the offline HTML cache and work without an RSC network response. */
+import {useEffect,useState} from "react";
+import {T} from "@/features/i18n/text";
+export function OfflineSettings(){
+ const [status,setStatus]=useState("Checking device storage…"),[pages,setPages]=useState<string[]>([]);
+ useEffect(()=>{void (async()=>{const kept=await navigator.storage?.persisted?.();setStatus(kept?"Persistent storage enabled":"Storage can be evicted. Keep project backups.");if("caches" in window){const names=(await caches.keys()).filter(k=>k.startsWith("lumaforge-public-")),paths=new Set<string>();for(const n of names)for(const r of await (await caches.open(n)).keys()){const u=new URL(r.url);if(!u.pathname.startsWith("/_next")&&u.pathname!=="/offline.html")paths.add(u.pathname);}setPages([...paths]);}})().catch(()=>setStatus("Unable to read offline storage"));},[]);
+ return <section className="shortcut-card"><h2><T text="Offline workspace"/></h2><p><T text={status}/></p><button className="button" onClick={()=>{void navigator.storage?.persist?.().then(ok=>setStatus(ok?"Persistent storage enabled":"Browser did not grant persistent storage")).catch(()=>setStatus("Unable to read offline storage"));}}><T text="Request persistent storage"/></button><p><T text="Open each tool online once before disconnecting. HEIC conversion also needs its decoder loaded first."/></p><p><T text="Cached pages"/>: {pages.join(", ")||"—"}</p><nav><a href="/editor"><T text="Editor"/></a> · <a href="/projects"><T text="Projects"/></a> · <a href="/export-center"><T text="Download editable project backup"/></a></nav><p><T text="Cloud sync, sign-in and online AI are unavailable offline. Browser storage is not a backup."/></p></section>;
+}

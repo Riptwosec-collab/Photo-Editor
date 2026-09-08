@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -208,9 +210,9 @@ export function Filmstrip({ onNotice }: { onNotice: (message: string) => void })
       <header className="filmstrip-toolbar">
         <div className="filmstrip-left-controls">
           <button className="filmstrip-icon" title="Grid view"><Grid3X3 size={14} /></button>
-          <label className="filmstrip-select"><span>Album</span><select aria-label="Album selector"><option>All Photos</option><option>Current Project</option></select></label>
-          <span className="filmstrip-count">{items.length} photos</span>
-          <span className="filmstrip-selected">{selected.length} selected</span>
+          <label className="filmstrip-select"><span> <T text={"Album"} /> </span><select aria-label="Album selector"><option>All Photos</option><option>Current Project</option></select></label>
+          <span className="filmstrip-count">{items.length} <T text={"photos"} /> </span>
+          <span className="filmstrip-selected">{selected.length} <T text={"selected"} /> </span>
         </div>
         <div className="filmstrip-middle-controls">
           <div className="rating-control" aria-label="Star rating">
@@ -226,7 +228,7 @@ export function Filmstrip({ onNotice }: { onNotice: (message: string) => void })
           <button className={selected.some((id) => meta[id]?.favorite) ? "filmstrip-icon active favorite" : "filmstrip-icon"} disabled={!selected.length} title="Favorite selected" onClick={() => updateSelectedMeta({ favorite: !selected.some((id) => meta[id]?.favorite) })}><Heart size={14} fill={selected.some((id) => meta[id]?.favorite) ? "currentColor" : "none"} /></button>
         </div>
         <div className="filmstrip-right-controls">
-          <button className="filmstrip-text-button" onClick={() => void syncEdits()}><Copy size={13} /> Sync edits</button>
+          <button className="filmstrip-text-button" onClick={() => void syncEdits()}><Copy size={13} /> <T text={"Sync edits"} /> </button>
           <button className="filmstrip-icon" onClick={() => void copySettings()} title="Copy settings"><Copy size={14} /></button>
           <button className="filmstrip-icon" onClick={pasteSettings} title="Paste settings"><Clipboard size={14} /></button>
           <button className="filmstrip-icon" title={`Sort: ${sort}`} onClick={() => setSort((value) => value === "recent" ? "name" : "recent")}><ArrowUpDown size={14} /></button>
@@ -255,8 +257,8 @@ export function Filmstrip({ onNotice }: { onNotice: (message: string) => void })
                 <span className="thumbnail-name">{item.name}</span>
                 <span className="thumbnail-meta">{item.width}×{item.height}</span>
                 <span className="thumbnail-badges">
-                  {item.current && <b>EDITING</b>}
-                  {item.project && <b className="edited-badge">EDITED</b>}
+                  {item.current && <b> <T text={"EDITING"} /> </b>}
+                  {item.project && <b className="edited-badge"> <T text={"EDITED"} /> </b>}
                   {itemMeta.favorite && <Heart size={11} fill="currentColor" />}
                   {itemMeta.rejected && <Flag size={11} />}
                   {itemMeta.rating > 0 && <span><Star size={10} fill="currentColor" />{itemMeta.rating}</span>}

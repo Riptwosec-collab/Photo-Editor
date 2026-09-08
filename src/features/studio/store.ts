@@ -42,6 +42,8 @@ const defaultLocks: Record<LockTarget, boolean> = {
 };
 
 type StudioState = {
+  colorPicking: boolean; pickedHue: string | null;
+  setColorPicking: (value:boolean) => void; setPickedHue: (value:string|null) => void;
   sidebarCollapsed: boolean;
   assistantCollapsed: boolean;
   inspectorCollapsed: boolean;
@@ -84,6 +86,7 @@ type StudioState = {
 export const useStudioStore = create<StudioState>()(
   persist(
     (set) => ({
+      colorPicking:false, pickedHue:null, setColorPicking:(colorPicking)=>set({colorPicking}), setPickedHue:(pickedHue)=>set({pickedHue,colorPicking:false}),
       sidebarCollapsed: false,
       assistantCollapsed: false,
       inspectorCollapsed: false,

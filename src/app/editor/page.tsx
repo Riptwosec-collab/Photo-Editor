@@ -3,8 +3,8 @@ import { EditorWorkspace } from "@/components/editor/editor-workspace";
 export default async function EditorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ project?: string }>;
+  searchParams: Promise<{ project?: string; tool?: string }>;
 }) {
   const params = await searchParams;
-  return <EditorWorkspace initialProjectId={params.project} />;
+  return <EditorWorkspace initialProjectId={params.project} initialTool={params.tool} />;
 }

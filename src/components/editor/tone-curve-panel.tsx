@@ -1,4 +1,6 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useRef } from "react";
 import { RotateCcw } from "lucide-react";
@@ -43,7 +45,7 @@ export function ToneCurvePanel({ embedded = false }: { embedded?: boolean }) {
     <div className={embedded ? "inline-editor-panel tone-curve-inline" : "panel-scroll"}>
       {!embedded && (
         <div className="panel-title">
-          <div><span className="kicker">RGB composite</span><h2>Tone Curve</h2></div>
+          <div><span className="kicker">RGB composite</span><h2> <T text={"Tone Curve"} /> </h2></div>
           <button className="icon-button" title="Reset curve" onClick={resetCurve}><RotateCcw size={16} /></button>
         </div>
       )}

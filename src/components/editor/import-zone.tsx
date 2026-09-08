@@ -1,10 +1,12 @@
 "use client";
+import { T } from "@/features/i18n/text";
+
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, ClipboardPaste, ImagePlus, LoaderCircle } from "lucide-react";
 import { useEditorStore } from "@/features/editor/store";
 
-const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
+import { IMAGE_ACCEPT, isSupportedImage, normalizeImage } from "@/features/editor/import-image";
 const maxSize = 30 * 1024 * 1024;
 
 async function decodeDimensions(file: File, objectUrl: string) {
@@ -38,8 +40,8 @@ export function ImportZone() {
     async (file?: File, source = "file") => {
       if (!file) return;
       setError("");
-      if (!allowed.has(file.type)) {
-        setError("รองรับ JPG, PNG และ WebP ใน MVP นี้");
+      if (!isSupportedImage(file)) {
+        setError("รองรับ JPG, PNG, WebP, HEIC และ HEIF");
         return;
       }
       if (file.size > maxSize) {
@@ -50,11 +52,13 @@ export function ImportZone() {
       setSourceLabel(`Reading from ${source}…`);
       let objectUrl: string | null = null;
       try {
+        file = await normalizeImage(file);
         objectUrl = URL.createObjectURL(file);
         const dimensions = await decodeDimensions(file, objectUrl);
         if (!dimensions.width || !dimensions.height) {
           throw new Error("Image dimensions are unavailable");
         }
+        if (dimensions.width * dimensions.height > 60_000_000) throw new Error("Image exceeds 60 megapixels");
         setImage({
           name:
             file.name ||
@@ -137,21 +141,20 @@ export function ImportZone() {
       >
         {loading ? <LoaderCircle className="spin" /> : <ImagePlus />}
         <strong>{loading ? "กำลังอ่านภาพ…" : "ลากภาพมาวาง หรือคลิกเพื่อเลือก"}</strong>
-        <span>JPG · PNG · WebP · สูงสุด 30 MB</span>
+        <span>JPG · PNG · WebP · HEIC · สูงสุด 30 MB</span>
         <small>{sourceLabel}</small>
       </button>
+      <p className="control-note"><T text="HEIC: converted locally to JPEG, first frame only, without original EXIF."/></p>
       <div className="import-actions">
         <button className="button" onClick={() => void readClipboard()}>
-          <ClipboardPaste size={16} /> Paste image
-        </button>
+          <ClipboardPaste size={16} /> <T text={"Paste image"} /> </button>
         <button className="button" onClick={() => cameraRef.current?.click()}>
-          <Camera size={16} /> Open camera
-        </button>
+          <Camera size={16} /> <T text={"Open camera"} /> </button>
       </div>
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept={IMAGE_ACCEPT}
         hidden
         onChange={(event) => void load(event.target.files?.[0], "file picker")}
       />
