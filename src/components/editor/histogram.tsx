@@ -4,6 +4,7 @@ import { T } from "@/features/i18n/text";
 
 import { useEffect, useRef, useState } from "react";
 import { TriangleAlert } from "lucide-react";
+import { clippingKind } from "@/features/render/pro-tools";
 import { renderStudio } from "@/features/render/studio-renderer";
 import { useEditorStore } from "@/features/editor/store";
 import { useStudioStore } from "@/features/studio/store";
@@ -37,9 +38,11 @@ export function Histogram() {
       const green = new Uint32Array(256);
       const blue = new Uint32Array(256);
       const luminance = new Uint32Array(256);
+      let visiblePixels=0;
       let shadowClips = 0;
       let highlightClips = 0;
       for (let index = 0; index < pixels.length; index += 4) {
+        if(!pixels[index+3])continue;visiblePixels++;
         const r = pixels[index];
         const g = pixels[index + 1];
         const b = pixels[index + 2];
@@ -48,10 +51,11 @@ export function Histogram() {
         green[g] += 1;
         blue[b] += 1;
         luminance[l] += 1;
-        if (l <= 2) shadowClips += 1;
-        if (l >= 253) highlightClips += 1;
+        const kind=clippingKind(r,g,b,pixels[index+3]);
+        if (kind<0) shadowClips += 1;
+        if (kind>0) highlightClips += 1;
       }
-      const pixelCount = Math.max(1, pixels.length / 4);
+      const pixelCount = Math.max(1, visiblePixels);
       setClipping({ shadows: (shadowClips / pixelCount) * 100, highlights: (highlightClips / pixelCount) * 100 });
       const max = Math.max(...red, ...green, ...blue, ...luminance, 1);
       output.width = 300;

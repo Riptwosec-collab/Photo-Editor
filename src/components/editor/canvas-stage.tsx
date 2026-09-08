@@ -1,4 +1,5 @@
 "use client";
+import { clippingKind, sampleHue } from "@/features/render/pro-tools";
 import { T } from "@/features/i18n/text";
 
 
@@ -24,6 +25,8 @@ import { useStudioStore } from "@/features/studio/store";
 import { cn } from "@/lib/cn";
 
 export function CanvasStage() {
+  const clippingRef=useRef<HTMLCanvasElement>(null);
+  const colorPicking=useStudioStore(s=>s.colorPicking);
   const performanceMode = usePreferences((s) => s.performanceMode);
   const blobCache = useRef<{ url: string; value: Promise<Blob> } | null>(null);
   const layers = useEditorStore((s) => s.layers);
@@ -102,6 +105,13 @@ export function CanvasStage() {
     return () => { clearTimeout(timer); controller.abort(); };
   }, [adjustments, geometry, image, compareMode, performanceMode, layers, committed]);
 
+  useEffect(()=>{
+    const src=editedRef.current,dst=clippingRef.current;if(!src||!dst||!src.width)return;
+    dst.width=src.width;dst.height=src.height;
+    const ctx=dst.getContext("2d")!,data=src.getContext("2d")!.getImageData(0,0,src.width,src.height);
+    for(let i=0;i<data.data.length;i+=4){const k=clippingKind(data.data[i],data.data[i+1],data.data[i+2],data.data[i+3]);data.data[i]=k>0?255:0;data.data[i+1]=0;data.data[i+2]=k<0?255:0;data.data[i+3]=k?180:0;}
+    ctx.putImageData(data,0,0);
+  },[rendering,clippingVisible,compareMode,showOriginal]);
   if (!image) return null;
 
   const editedClip = compareMode === "vertical"
@@ -136,7 +146,7 @@ export function CanvasStage() {
           }
         }}
         onPointerDown={(event) => {
-          if (maskEditing || (event.target as HTMLElement).closest(".compare-handle")) return;
+          if (colorPicking || maskEditing || (event.target as HTMLElement).closest(".compare-handle")) return;
           pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
           event.currentTarget.setPointerCapture(event.pointerId);
           if (pointers.current.size === 2) {
@@ -175,8 +185,12 @@ export function CanvasStage() {
               className={cn("canvas-layer edited", showOriginal && "hidden", compareMode === "blink" && !showOriginal && "visible")}
               style={showOriginal || compareMode === "blink" ? undefined : editedClip}
               aria-label="Edited image preview"
+              onPointerDown={event=>{if(!colorPicking)return;event.stopPropagation();const c=event.currentTarget,r=c.getBoundingClientRect();const x=Math.max(0,Math.min(c.width-1,Math.floor((event.clientX-r.left)/r.width*c.width))),y=Math.max(0,Math.min(c.height-1,Math.floor((event.clientY-r.top)/r.height*c.height)));const p=c.getContext("2d")!.getImageData(x,y,1,1).data;const hue=p[3]?sampleHue(p[0],p[1],p[2]):null;if(hue)useStudioStore.getState().setPickedHue(hue);else setRenderError("Neutral or transparent pixel: choose a colored area");}}
+              data-picking={colorPicking}
+
             />
-            {maskEditing && <MaskCanvas />}{!maskEditing && !showOriginal && compareMode === "off" && <TransformOverlay />}
+            {clippingVisible && !showOriginal && <canvas ref={clippingRef} className="canvas-layer pixel-clipping" style={editedClip} aria-label="Pixel clipping overlay"/>}
+            {maskEditing && <MaskCanvas />}{!colorPicking && !maskEditing && !showOriginal && compareMode === "off" && <TransformOverlay />}
             {(compareMode === "vertical" || compareMode === "horizontal") && !showOriginal && (
               <div
                 role="slider"
@@ -219,7 +233,7 @@ export function CanvasStage() {
         {gridVisible && <div className="canvas-grid-overlay" aria-hidden="true" />}
         {guidesVisible && <div className="canvas-guides-overlay" aria-hidden="true"><span /><span /></div>}
         {safeZonesVisible && <div className="safe-zone-overlay" aria-label="Safe zones" />}
-        {clippingVisible && <div className="clipping-overlay" aria-label="Clipping warning preview"><span> <T text={"Clipping preview"} /> </span></div>}
+
         {maskOverlayVisible && <div className="mask-preview-overlay" aria-label="Local radial mask preview"><span>Radial mask preview</span></div>}
         {renderError && <span className="render-badge" role="alert">{renderError}</span>}
         {rendering && <span className="render-badge"> <T text={"Rendering shared preview…"} /> </span>}

@@ -61,6 +61,7 @@ export const DEFAULT_ADJUSTMENTS: Adjustments = {
 };
 
 export const DEFAULT_GEOMETRY: Geometry = {
+  perspectiveMode: "shear",
   rotation: 0,
   flipX: false,
   flipY: false,

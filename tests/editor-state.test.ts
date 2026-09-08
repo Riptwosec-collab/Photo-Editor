@@ -14,6 +14,7 @@ import { deriveColorMatch, scaleRecipe } from "../src/features/editor/intelligen
 test("default adjustment recipe is neutral", () => {
   for (const value of Object.values(DEFAULT_ADJUSTMENTS)) assert.equal(value, 0);
   assert.deepEqual(DEFAULT_GEOMETRY, {
+    perspectiveMode: "shear",
     rotation: 0,
     flipX: false,
     flipY: false,

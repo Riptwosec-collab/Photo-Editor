@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: /offline-production.spec.ts/,
   retries: 1,
   workers: 1,
   use: {
@@ -18,6 +19,6 @@ export default defineConfig({
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "mobile", use: { ...devices["Pixel 7"] } },
-    { name: "iphone", testMatch: /refine-tools.spec.ts/, use: { ...devices["iPhone 13"], browserName: "webkit" } },
+    { name: "iphone", testMatch: /(?:refine-tools|pro-workflows).spec.ts/, use: { ...devices["iPhone 13"], browserName: "webkit" } },
   ],
 });

@@ -370,6 +370,8 @@ export function applyVignette(
   context.restore();
 }
 
+import { projectivePixels } from "../render/pro-tools";
+
 export function renderToCanvas(
   source: CanvasImageSource,
   sourceWidth: number,
@@ -399,7 +401,7 @@ export function renderToCanvas(
   context.save();
   context.translate(width / 2, height / 2);
   context.rotate((rotation * Math.PI) / 180);
-  context.transform(1, shearY, shearX, 1, 0, 0);
+  if (geometry.perspectiveMode !== "projective") context.transform(1, shearY, shearX, 1, 0, 0);
   context.scale(geometry.flipX ? -1 : 1, geometry.flipY ? -1 : 1);
   context.drawImage(
     source,
@@ -415,6 +417,7 @@ export function renderToCanvas(
   context.restore();
 
   const data = context.getImageData(0, 0, width, height);
+  if(geometry.perspectiveMode === "projective" && (geometry.perspectiveX || geometry.perspectiveY)) data.data.set(projectivePixels(data,geometry.perspectiveX,geometry.perspectiveY));
   const colorAdjusted = processImageData(data, adjustments);
   context.putImageData(
     applyDetailFilters(

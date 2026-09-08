@@ -11,7 +11,7 @@ export function TransformOverlay() {
   const [preview, setPreview] = useState<EditorLayer["transform"]>();
   const gesture = useRef<{x:number;y:number;rect:DOMRect;value:typeof neutral;mode:string;next:typeof neutral}|null>(null);
   useEffect(()=>()=>{if(gesture.current)useEditorStore.getState().cancelLayerPreview();},[]);
-  if (!layer || !["text", "raster"].includes(layer.kind)) return null;
+  if (!layer || layer.locked || !["text", "raster"].includes(layer.kind)) return null;
   const value = preview ?? layer.transform ?? neutral;
   function finish(commit: boolean) {
     const g = gesture.current; gesture.current = null;

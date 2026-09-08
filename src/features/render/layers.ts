@@ -62,7 +62,7 @@ export async function compositeLayers(canvas: Surface, layers: EditorLayer[] = [
       const recipe = { ...DEFAULT_ADJUSTMENTS, ...layer.adjustments };
       out.putImageData(applyDetailFilters(processImageData(data, recipe), w, h, recipe.sharpness, recipe.noiseReduction, recipe.texture), 0, 0);
     } else if (layer.kind === "text") {
-      out.fillStyle = layer.color ?? "#ffffff"; out.font = `600 ${Math.max(1, (layer.fontSize ?? .055) * w)}px sans-serif`; out.textAlign = "center"; out.fillText(layer.text ?? "", (layer.x ?? .5) * w, (layer.y ?? .8) * h, w * .95);
+      out.fillStyle = layer.color ?? "#ffffff"; out.font = `600 ${Math.max(1, (layer.fontSize ?? .055) * w)}px sans-serif`; out.textAlign = layer.textAlign ?? "center"; out.fillText(layer.text ?? "", (layer.x ?? .5) * w, (layer.y ?? .8) * h, w * .95);
     } else if (layer.dataUrl) {
       const blob = await fetch(layer.dataUrl).then((r) => r.blob());
       const bitmap = await createImageBitmap(blob); out.drawImage(bitmap, 0, 0, w, h); bitmap.close();

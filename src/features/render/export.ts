@@ -1,10 +1,12 @@
+import { inspectExport } from "./preflight";
 import { encodeColorManaged, type OutputColorSpace } from "./color-management";
 import { renderStudio } from "./studio-renderer";
 import type { StoredProject, ExportFormat, AspectRatio } from "../editor/types";
 export type ExportOptions = { colorSpace?: OutputColorSpace; format: ExportFormat; quality: number; longEdge: number; aspectRatio?: AspectRatio; watermark: string; watermarkOpacity: number; background: string };
-export async function prepareExport(canvas: HTMLCanvasElement, project: StoredProject, options: ExportOptions, signal?: AbortSignal) {
+export async function prepareExport(canvas: HTMLCanvasElement, project: StoredProject, options: ExportOptions, signal?: AbortSignal, onPreflight?: (notes:string[])=>void) {
   await renderStudio(canvas, { blob: project.imageBlob, adjustments: project.adjustments, geometry: { ...project.geometry, aspectRatio: options.aspectRatio ?? project.geometry.aspectRatio }, layers: project.layers, limit: options.longEdge }, signal);
   if (signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+  onPreflight?.(inspectExport(canvas,project,options));
   const ctx = canvas.getContext("2d")!;
   if (options.format === "image/jpeg") { ctx.save(); ctx.globalCompositeOperation = "destination-over"; ctx.fillStyle = options.background; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
   if (options.watermark.trim()) {

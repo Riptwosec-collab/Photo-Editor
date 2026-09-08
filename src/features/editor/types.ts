@@ -64,6 +64,7 @@ export type Adjustments = {
 export type AspectRatio = "original" | "free" | "1:1" | "4:5" | "16:9" | "9:16";
 
 export type Geometry = {
+  perspectiveMode?: "shear" | "projective";
   rotation: 0 | 90 | 180 | 270;
   flipX: boolean;
   flipY: boolean;
@@ -83,6 +84,7 @@ export type EditorLayer = {
   id: string; name: string; kind: "adjustment" | "text" | "raster"; visible: boolean; opacity: number;
   adjustments: Partial<Adjustments>; mask: LayerMask;
   transform?: { x: number; y: number; scale: number; rotation: number };
+  locked?: boolean; group?: string; textAlign?: "left" | "center" | "right";
   replaceBase?: boolean; retouchMode?: "clone" | "heal"; decontaminate?: number;
   colorReplace?: { color: string; strength: number };
   lut?: CubeLut; channelCurves?: ChannelCurves; retouch?: { x: number; y: number; radius: number; sourceX: number; sourceY: number; mode?: "clone" | "heal" }[];
@@ -144,6 +146,7 @@ export type StoredProject = {
 
 export type StoredVersion = {
   layers?: EditorLayer[];
+  parentVersionId?: string;
   thumbnail?: string;
   id: string;
   projectId: string;

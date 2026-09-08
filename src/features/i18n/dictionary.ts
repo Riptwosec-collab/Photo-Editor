@@ -425,3 +425,39 @@ Object.assign(thai, {
 });
 
 Object.assign(thai, {"Add image layer":"เพิ่มเลเยอร์รูปภาพ","Image layer added. Up to 2000 px; use Transform to position it.":"เพิ่มเลเยอร์รูปแล้ว ขนาดสูงสุด 2000 พิกเซล ใช้ Transform จัดตำแหน่ง"});
+
+Object.assign(thai, {
+  "Pick color from image": "จิ้มเลือกสีจากภาพ",
+  "Cancel color picker": "ยกเลิกเลือกสี",
+  "Tap a colored area in the photo to select its HSL range. Neutral pixels have no hue.": "แตะพื้นที่สีในภาพเพื่อเลือกช่วง HSL พื้นที่สีเทาไม่มีค่าสีเฉพาะ",
+  "Layer group": "กลุ่มเลเยอร์",
+  "Toggle group visibility": "แสดง/ซ่อนกลุ่ม",
+  "Text alignment": "จัดแนวข้อความ",
+  "Center text on image": "จัดข้อความกลางภาพ",
+  "Left": "ซ้าย",
+  "Center": "กลาง",
+  "Right": "ขวา",
+  "Snapshot name": "ชื่อเวอร์ชัน",
+  "Branch from": "แยกจากเวอร์ชัน",
+  "Deleted snapshot": "เวอร์ชันที่ถูกลบ",
+  "Compare": "เปรียบเทียบ",
+  "Export preflight": "ตรวจภาพก่อนส่งออก",
+  "Checking export…": "กำลังตรวจภาพส่งออก…",
+  "No layout or transparency warnings detected.": "ไม่พบข้อความล้นกรอบหรือปัญหาความโปร่งใส",
+  "Requested size exceeds available detail. Export keeps native size without upscaling.": "ขนาดที่เลือกเกินรายละเอียดภาพ ระบบส่งออกตามขนาดจริงโดยไม่ขยายภาพ",
+  "JPEG removes transparency using the chosen background color. Choose PNG to keep it.": "JPEG จะเติมสีพื้นหลังแทนความโปร่งใส เลือก PNG เพื่อเก็บพื้นหลังโปร่งใส",
+  "Offline workspace": "พื้นที่ทำงานออฟไลน์",
+  "Checking device storage…": "กำลังตรวจพื้นที่อุปกรณ์…",
+  "Persistent storage enabled": "เปิดใช้พื้นที่จัดเก็บถาวรแล้ว",
+  "Storage can be evicted. Keep project backups.": "เบราว์เซอร์อาจล้างพื้นที่นี้ ควรเก็บไฟล์สำรองโปรเจกต์",
+  "Browser did not grant persistent storage": "เบราว์เซอร์ยังไม่อนุญาตพื้นที่ถาวร",
+  "Unable to read offline storage": "อ่านพื้นที่ออฟไลน์ไม่ได้",
+  "Request persistent storage": "ขอใช้พื้นที่จัดเก็บถาวร",
+  "Cached pages": "หน้าที่เก็บไว้",
+  "Open each tool online once before disconnecting. HEIC conversion also needs its decoder loaded first.": "เปิดแต่ละเครื่องมือขณะออนไลน์ก่อนตัดเน็ต การแปลง HEIC ต้องโหลดตัวแปลงก่อนด้วย",
+  "Cloud sync, sign-in and online AI are unavailable offline. Browser storage is not a backup.": "การซิงก์คลาวด์ เข้าสู่ระบบ และ AI ออนไลน์ต้องใช้เน็ต พื้นที่เบราว์เซอร์ไม่ใช่ไฟล์สำรอง",
+  "Offline: local editing is available for loaded tools. AI and Cloud need a connection.": "ออฟไลน์: แต่งภาพด้วยเครื่องมือที่โหลดแล้วได้ ส่วน AI และ Cloud ต้องใช้อินเทอร์เน็ต",
+  "Install app update (reopen after saving)": "ติดตั้งอัปเดตแอป (บันทึกงานแล้วเปิดใหม่)",
+  "Branch loaded. Edit the image, then create a snapshot to save the branch.": "เปิดเวอร์ชันต้นทางแล้ว แต่งภาพต่อแล้วกดสร้างเวอร์ชันเพื่อบันทึกแยก",
+  "Projective perspective corrects converging lines. Transparent edges can be removed with a free crop. Existing legacy recipes keep their original geometry until a perspective slider changes.": "ปรับเพอร์สเปกทีฟเพื่อแก้เส้นลู่เข้า ใช้ครอปอิสระตัดขอบโปร่งใส สูตรเดิมจะคงรูปแบบเดิมจนกว่าจะปรับสไลเดอร์เพอร์สเปกทีฟ"
+});

@@ -27,6 +27,8 @@ type EditorState = {
   previewLayer: (id: string, patch: Partial<EditorLayer>) => void;
   cancelLayerPreview: () => void;
   updateLayer: (id: string, patch: Partial<EditorLayer>) => void;
+  duplicateLayer: (id:string) => void;
+  updateGroup: (group:string,patch:Pick<EditorLayer,"visible">) => void;
   removeLayer: (id: string) => void;
   moveLayer: (id: string, direction: number) => void;
   restoreSnapshot: (snapshot: EditorSnapshot) => void;
@@ -120,11 +122,13 @@ export const useEditorStore = create<EditorState>()(
         setMaskEditing: (maskEditing) => set({ maskEditing }),
         setBrush: (brushRadius, brushErase) => set({ brushRadius, brushErase }),
         addLayer: (layer) => { const state = get(); if (state.layers.length >= 20) throw new Error("Maximum 20 layers per project"); commitLayers([...state.layers, layer]); set({ activeLayerId: layer.id }); },
-        previewLayer: (id,patch) => set({layers:get().layers.map(layer=>layer.id===id?{...layer,...patch,id}:layer)}),
+        previewLayer: (id,patch) => set({layers:get().layers.map(layer=>layer.id===id&&!layer.locked?{...layer,...patch,id}:layer)}),
         cancelLayerPreview: () => set({layers:structuredClone(get().committed.layers??[])}),
-        updateLayer: (id, patch) => commitLayers(get().layers.map((layer) => layer.id === id ? { ...layer, ...patch, id } : layer)),
-        removeLayer: (id) => { commitLayers(get().layers.filter((layer) => layer.id !== id)); if (get().activeLayerId === id) set({ activeLayerId: null, maskEditing: false }); },
-        moveLayer: (id, direction) => { const layers = [...get().layers]; const index = layers.findIndex((l) => l.id === id); const next = Math.max(0, Math.min(layers.length - 1, index + direction)); if (index < 0 || next === index) return; [layers[index], layers[next]] = [layers[next], layers[index]]; commitLayers(layers); },
+        updateLayer: (id, patch) => commitLayers(get().layers.map((layer) => layer.id === id ? (layer.locked ? (Object.keys(patch).length===1&&typeof patch.locked==="boolean"?{...layer,locked:patch.locked}:layer) : { ...layer, ...patch, id }) : layer)),
+        duplicateLayer: (id) => {const state=get(),layer=state.layers.find(l=>l.id===id);if(!layer||state.layers.length>=20)return;const copy={...structuredClone(layer),id:crypto.randomUUID(),name:`${layer.name} Copy`.slice(0,100),locked:false};const layers=[...state.layers];layers.splice(layers.indexOf(layer)+1,0,copy);commitLayers(layers);set({activeLayerId:copy.id});},
+        updateGroup:(group,patch)=>commitLayers(get().layers.map(l=>l.group===group&&!l.locked?{...l,...patch}:l)),
+        removeLayer: (id) => { if(get().layers.find(l=>l.id===id)?.locked)return; commitLayers(get().layers.filter((layer) => layer.id !== id)); if (get().activeLayerId === id) set({ activeLayerId: null, maskEditing: false }); },
+        moveLayer: (id, direction) => { if(get().layers.find(l=>l.id===id)?.locked)return; const layers = [...get().layers]; const index = layers.findIndex((l) => l.id === id); const next = Math.max(0, Math.min(layers.length - 1, index + direction)); if (index < 0 || next === index) return; [layers[index], layers[next]] = [layers[next], layers[index]]; commitLayers(layers); },
         restoreSnapshot: (snapshot) => { const state = get(); const next = cloneSnapshot(snapshot); set({ adjustments: next.adjustments, geometry: next.geometry, layers: next.layers ?? [], committed: next, past: [...state.past, cloneSnapshot(state.committed)].slice(-40), future: [], activePreset: null }); },
         image: null,
         currentProjectId: null,
@@ -317,6 +321,7 @@ export const useEditorStore = create<EditorState>()(
           const state = get();
           commitGeometry({
             ...state.geometry,
+            perspectiveMode: "projective",
             perspectiveX: Math.max(-100, Math.min(100, perspectiveX)),
             perspectiveY: Math.max(-100, Math.min(100, perspectiveY)),
           });

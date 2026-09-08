@@ -65,3 +65,20 @@ Validation: local lint, TypeScript, unit tests and production build; new Playwri
 - AI readiness now lists missing server settings and rejects malformed/unpinned model versions. No provider token, service-role credential or spending budget was supplied, and no paid model call was made. Real AI activation remains blocked on those values.
 
 Validation: local production build and unit tests pass. GitHub Actions is the authoritative browser gate; check the latest PR #4 commit before merging. WebKit emulation does not certify real iPhone HEIC, memory pressure or background suspension behavior. No main merge or production promotion is included in this change.
+
+## Pro workflow and offline editing follow-up
+
+The requested sequence was followed by checking release/activation blockers before implementing the independent editing improvements. Vercel still reports the free deployment rate limit on the latest prior commit; no quota workaround or plan purchase was attempted. A production merge/promotion is pending a current verified deployment. Provider credentials, explicit spending configuration, a signed-in Cloud session and a physical iPhone are still unavailable.
+
+Implemented:
+- Projective horizontal/vertical perspective with inverse mapping and alpha-aware bilinear sampling. Legacy shear recipes retain their appearance until the perspective controls are changed. Free crop removes empty corners; lens profiles and automatic upright detection are not provided.
+- Pixel-based clipping overlay and consistent histogram counting, excluding transparent pixels and detecting individual clipped color channels.
+- On-photo hue sampling into the eight HSL ranges, with neutral/transparent sample rejection.
+- Durable layer locks, independent duplicates, named groups with one-step group visibility actions, and text alignment. Locked layers reject direct editing, deletion and reordering. Groups are organizational labels, not nested compositing groups.
+- Named local snapshot branches with parent links and up to four thumbnail comparisons. Creating a branch loads the selected recipe for editing; the next snapshot records its parent. Local snapshot history itself is not included in portable project backups or synchronized as a tree.
+- Export checks for text extending beyond the frame, native-size limits, and JPEG transparency loss before flattening. Checks are advisory and preserve the selected export behavior.
+- Restricted public-shell service worker caching, offline fallback, online/offline status, explicit app-update action and a persistent-storage request. Auth/API/Cloud and cross-origin requests are excluded. Tools and the HEIC decoder must be loaded online before offline use. Local projects remain in IndexedDB, separately from the public-shell cache.
+
+Local lint, TypeScript, 40 unit tests and production build passed. Additional desktop/mobile/WebKit flows and a production-mode offline recovery gate are included in CI; the latest PR status is authoritative.
+
+This is an independently implemented editor, not a claim of 100% Lightroom/Meitu equivalence. Full RAW demosaicing and camera profiles, end-to-end wide-gamut/HDR editing, automatic facial landmarks/reshaping/makeup, production AI quality validation and physical-device certification remain outside the verified implementation. Existing local portrait, healing, HSL, curves, LUT, mask, layer and export tools can be combined now.

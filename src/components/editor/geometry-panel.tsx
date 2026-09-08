@@ -62,15 +62,15 @@ export function GeometryPanel({ embedded = false }: { embedded?: boolean }) {
       )}
 
       <label className="compact-slider-label"><span> <T text={"Straighten"} /> </span><output>{geometry.straighten.toFixed(1)}°</output><input type="range" min="-45" max="45" step="0.1" value={geometry.straighten} onChange={(event) => setStraighten(Number(event.target.value))} /></label>
-      <label className="compact-slider-label"><span> <T text={"Horizontal perspective"} /> </span><output>{geometry.perspectiveX}</output><input type="range" min="-100" max="100" value={geometry.perspectiveX} onChange={(event) => setPerspective(Number(event.target.value), geometry.perspectiveY)} /></label>
-      <label className="compact-slider-label"><span> <T text={"Vertical perspective"} /> </span><output>{geometry.perspectiveY}</output><input type="range" min="-100" max="100" value={geometry.perspectiveY} onChange={(event) => setPerspective(geometry.perspectiveX, Number(event.target.value))} /></label>
+      <label className="compact-slider-label"><span> <T text={"Horizontal perspective"} /> </span><output>{geometry.perspectiveX}</output><input type="range" min="-100" max="100" aria-label="Horizontal perspective" value={geometry.perspectiveX} onChange={(event) => setPerspective(Number(event.target.value), geometry.perspectiveY)} /></label>
+      <label className="compact-slider-label"><span> <T text={"Vertical perspective"} /> </span><output>{geometry.perspectiveY}</output><input type="range" min="-100" max="100" aria-label="Vertical perspective" value={geometry.perspectiveY} onChange={(event) => setPerspective(geometry.perspectiveX, Number(event.target.value))} /></label>
 
       <div className="geometry-actions compact">
         <button className="button" onClick={rotateClockwise}><RotateCw size={15} /> <T text={"Rotate 90°"} /> </button>
         <button className={geometry.flipX ? "button active" : "button"} onClick={toggleFlipX}><FlipHorizontal2 size={15} /> <T text={"Horizontal"} /> </button>
         <button className={geometry.flipY ? "button active" : "button"} onClick={toggleFlipY}><FlipVertical2 size={15} /> <T text={"Vertical"} /> </button>
       </div>
-      <p className="control-note">Perspective uses a reversible canvas shear approximation. RAW-profile geometry remains a future native pipeline.</p>
+      <p className="control-note"><T text="Projective perspective corrects converging lines. Transparent edges can be removed with a free crop. Existing legacy recipes keep their original geometry until a perspective slider changes."/></p>
     </div>
   );
 }
