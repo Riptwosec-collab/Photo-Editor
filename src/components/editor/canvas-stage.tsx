@@ -24,7 +24,13 @@ import { usePreferences } from "@/features/studio/preferences";
 import { useStudioStore } from "@/features/studio/store";
 import { cn } from "@/lib/cn";
 
+function canvasHue(canvas:HTMLCanvasElement,x:number,y:number){
+ const px=Math.max(0,Math.min(canvas.width-1,Math.floor(x*canvas.width))),py=Math.max(0,Math.min(canvas.height-1,Math.floor(y*canvas.height)));
+ const p=canvas.getContext("2d")!.getImageData(px,py,1,1).data;return p[3]?sampleHue(p[0],p[1],p[2]):null;
+}
 export function CanvasStage() {
+  const renderBusy=useRef(true);
+  const pendingPick=useRef<{x:number;y:number}|null>(null);
   const clippingRef=useRef<HTMLCanvasElement>(null);
   const colorPicking=useStudioStore(s=>s.colorPicking);
   const performanceMode = usePreferences((s) => s.performanceMode);
@@ -87,6 +93,7 @@ export function CanvasStage() {
   useEffect(() => {
     if (!image) return;
     const controller = new AbortController();
+    renderBusy.current=true;
     const moving = JSON.stringify(adjustments) !== JSON.stringify(committed.adjustments) || JSON.stringify(layers) !== JSON.stringify(committed.layers ?? []);
     const timer = setTimeout(async () => {
       setRendering(true); setRenderError("");
@@ -99,8 +106,9 @@ export function CanvasStage() {
           if (controller.signal.aborted) return;
           if (canvas) await renderStudio(canvas, { blob, sourceWidth:image.width,sourceHeight:image.height, adjustments: before ? DEFAULT_ADJUSTMENTS : adjustments, geometry, layers: before ? [] : layers, limit: compareMode === "grid" ? Math.min(900, limit) : limit }, controller.signal);
         }
+        if(!controller.signal.aborted&&pendingPick.current&&editedRef.current){const point=pendingPick.current;pendingPick.current=null;if(useStudioStore.getState().colorPicking){const hue=canvasHue(editedRef.current,point.x,point.y);if(hue){useStudioStore.getState().setPickedHue(hue);setRenderError("");}else setRenderError("Neutral or transparent pixel: choose a colored area");}}
       } catch (error) { if (!controller.signal.aborted) setRenderError(error instanceof Error ? error.message : "Render failed"); }
-      finally { if (!controller.signal.aborted) setRendering(false); }
+      finally { if (!controller.signal.aborted) {renderBusy.current=false;setRendering(false);} }
     }, moving ? 45 : 120);
     return () => { clearTimeout(timer); controller.abort(); };
   }, [adjustments, geometry, image, compareMode, performanceMode, layers, committed]);
@@ -185,7 +193,7 @@ export function CanvasStage() {
               className={cn("canvas-layer edited", showOriginal && "hidden", compareMode === "blink" && !showOriginal && "visible")}
               style={showOriginal || compareMode === "blink" ? undefined : editedClip}
               aria-label="Edited image preview"
-              onPointerDown={event=>{if(!colorPicking)return;event.stopPropagation();const c=event.currentTarget,r=c.getBoundingClientRect();const x=Math.max(0,Math.min(c.width-1,Math.floor((event.clientX-r.left)/r.width*c.width))),y=Math.max(0,Math.min(c.height-1,Math.floor((event.clientY-r.top)/r.height*c.height)));const p=c.getContext("2d")!.getImageData(x,y,1,1).data;const hue=p[3]?sampleHue(p[0],p[1],p[2]):null;if(hue)useStudioStore.getState().setPickedHue(hue);else setRenderError("Neutral or transparent pixel: choose a colored area");}}
+              onPointerDown={event=>{if(!colorPicking)return;event.stopPropagation();const c=event.currentTarget,r=c.getBoundingClientRect(),point={x:(event.clientX-r.left)/r.width,y:(event.clientY-r.top)/r.height};if(renderBusy.current){pendingPick.current=point;return;}const hue=canvasHue(c,point.x,point.y);if(hue){useStudioStore.getState().setPickedHue(hue);setRenderError("");}else setRenderError("Neutral or transparent pixel: choose a colored area");}}
               data-picking={colorPicking}
 
             />
