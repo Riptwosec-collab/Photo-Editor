@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Playwright reaches the development server through this loopback host.
+  allowedDevOrigins: ["127.0.0.1"],
   experimental: { optimizePackageImports: ["lucide-react"] },
   headers: async () => [
     {

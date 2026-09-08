@@ -126,7 +126,7 @@ export function AiDirectorSection({ onNotice }: { onNotice: (message: string) =>
         })}
       </div>
 
-      {measurement?.url === image?.objectUrl && <p className="muted">Mean luminance: {measurement?.result.luminance.toFixed(1)} / 255 · {measurement?.result.samples.toLocaleString()} samples</p>}
+      {measurement && measurement.url === image?.objectUrl && <p className="muted">Mean luminance: {measurement?.result.luminance.toFixed(1)} / 255 · {measurement?.result.samples.toLocaleString()} samples</p>}
       <SegmentedControl value={direction} options={directions} onChange={setDirection} ariaLabel="Creative direction" />
 
       <label className="compact-slider-label"><span> <T text={"Plan intensity"} /> </span><output>{intensity}%</output><input type="range" min="0" max="100" value={intensity} onChange={(event) => setIntensity(Number(event.target.value))} /></label>
