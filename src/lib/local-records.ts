@@ -1,3 +1,4 @@
+import { encodeStored, decodeStored } from "./storage-codec";
 /** Separate structured-clone store for recoverable drafts, queues, and AI job receipts. */
 async function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -7,18 +8,19 @@ async function open(): Promise<IDBDatabase> {
   });
 }
 export async function putRecord<T>(id: string, value: T) {
+  const encoded=await encodeStored(value);
   const db = await open();
-  try { await new Promise<void>((resolve, reject) => { const tx = db.transaction("records", "readwrite"); tx.objectStore("records").put({ id, value }); tx.oncomplete = () => resolve(); tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Storage write failed")); }); }
+  try { await new Promise<void>((resolve, reject) => { const tx = db.transaction("records", "readwrite"); tx.objectStore("records").put({ id, value: encoded }); tx.oncomplete = () => resolve(); tx.onerror = tx.onabort = () => reject(tx.error ?? new Error("Storage write failed")); }); }
   finally { db.close(); }
 }
 export async function getRecord<T>(id: string): Promise<T | undefined> {
   const db = await open();
-  try { return await new Promise((resolve, reject) => { const r = db.transaction("records").objectStore("records").get(id); r.onsuccess = () => resolve(r.result?.value); r.onerror = () => reject(r.error); }); }
+  try { return await new Promise((resolve, reject) => { const r = db.transaction("records").objectStore("records").get(id); r.onsuccess = () => resolve(decodeStored<T | undefined>(r.result?.value)); r.onerror = () => reject(r.error); }); }
   finally { db.close(); }
 }
 export async function recordsByPrefix<T>(prefix: string): Promise<Array<{ id: string; value: T }>> {
   const db = await open();
-  try { return await new Promise((resolve, reject) => { const r = db.transaction("records").objectStore("records").getAll(IDBKeyRange.bound(prefix, `${prefix}\uffff`)); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); }); }
+  try { return await new Promise((resolve, reject) => { const r = db.transaction("records").objectStore("records").getAll(IDBKeyRange.bound(prefix, `${prefix}\uffff`)); r.onsuccess = () => resolve(decodeStored<Array<{id:string;value:T}>>(r.result)); r.onerror = () => reject(r.error); }); }
   finally { db.close(); }
 }
 export async function removeRecord(id: string) {

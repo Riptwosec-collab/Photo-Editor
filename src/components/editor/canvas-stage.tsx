@@ -84,7 +84,7 @@ export function CanvasStage() {
   useEffect(() => {
     if (!image) return;
     const controller = new AbortController();
-    const moving = adjustments !== committed.adjustments && JSON.stringify(adjustments) !== JSON.stringify(committed.adjustments);
+    const moving = JSON.stringify(adjustments) !== JSON.stringify(committed.adjustments) || JSON.stringify(layers) !== JSON.stringify(committed.layers ?? []);
     const timer = setTimeout(async () => {
       setRendering(true); setRenderError("");
       try {

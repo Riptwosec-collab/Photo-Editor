@@ -24,6 +24,8 @@ type EditorState = {
   setMaskEditing: (value: boolean) => void;
   setBrush: (radius: number, erase: boolean) => void;
   addLayer: (layer: EditorLayer) => void;
+  previewLayer: (id: string, patch: Partial<EditorLayer>) => void;
+  cancelLayerPreview: () => void;
   updateLayer: (id: string, patch: Partial<EditorLayer>) => void;
   removeLayer: (id: string) => void;
   moveLayer: (id: string, direction: number) => void;
@@ -109,6 +111,7 @@ export const useEditorStore = create<EditorState>()(
       const commitLayers = (layers: EditorLayer[]) => {
         const state = get();
         const next = makeSnapshot(state.adjustments, state.geometry, layers);
+        if (sameSnapshot(next,state.committed)) return;
         set({ layers, committed: next, past: [...state.past, cloneSnapshot(state.committed)].slice(-40), future: [] });
       };
       return {
@@ -117,6 +120,8 @@ export const useEditorStore = create<EditorState>()(
         setMaskEditing: (maskEditing) => set({ maskEditing }),
         setBrush: (brushRadius, brushErase) => set({ brushRadius, brushErase }),
         addLayer: (layer) => { const state = get(); if (state.layers.length >= 20) throw new Error("Maximum 20 layers per project"); commitLayers([...state.layers, layer]); set({ activeLayerId: layer.id }); },
+        previewLayer: (id,patch) => set({layers:get().layers.map(layer=>layer.id===id?{...layer,...patch,id}:layer)}),
+        cancelLayerPreview: () => set({layers:structuredClone(get().committed.layers??[])}),
         updateLayer: (id, patch) => commitLayers(get().layers.map((layer) => layer.id === id ? { ...layer, ...patch, id } : layer)),
         removeLayer: (id) => { commitLayers(get().layers.filter((layer) => layer.id !== id)); if (get().activeLayerId === id) set({ activeLayerId: null, maskEditing: false }); },
         moveLayer: (id, direction) => { const layers = [...get().layers]; const index = layers.findIndex((l) => l.id === id); const next = Math.max(0, Math.min(layers.length - 1, index + direction)); if (index < 0 || next === index) return; [layers[index], layers[next]] = [layers[next], layers[index]]; commitLayers(layers); },
