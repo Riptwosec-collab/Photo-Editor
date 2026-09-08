@@ -16,6 +16,8 @@
 
 ## Validation
 
+- Updated Next.js and its ESLint config to 16.3.4 and fflate to 0.8.3 after auditing dependencies. `npm audit --json` reports zero known vulnerabilities on 2026-09-08.
+
 - `npm run build` passed ESLint, TypeScript, 21 unit tests and the Next.js production build.
 - Added tests for layer/mask history, snapshot copying, backup input restrictions, revision decisions, and signed AI receipt ownership, tampering and expiry.
 - Playwright coverage added for draft recovery with layers, persisted batch/ZIP and theme/language, alongside editor, mobile and navigation flows. CI runs these before merge.

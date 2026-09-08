@@ -109,7 +109,7 @@ export function EditorTopToolbar({
         </div>
 
         <div className="toolbar-cluster toolbar-text-actions">
-          <button className="toolbar-button" onClick={cycleCompare} disabled={!image} title="Cycle comparison layouts">
+          <button className="toolbar-button compare-action" onClick={cycleCompare} disabled={!image} title="Cycle comparison layouts">
             <Columns2 size={15} /> <span> <T text={"Compare"} /> </span><small>{compareMode}</small>
           </button>
           <button
