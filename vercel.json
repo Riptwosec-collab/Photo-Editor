@@ -7,5 +7,5 @@
       "main": true
     }
   },
-  "ignoreCommand": "bash -lc 'base=${VERCEL_GIT_PREVIOUS_SHA:-}; head=${VERCEL_GIT_COMMIT_SHA:-HEAD}; [ -n \"$base\" ] && git cat-file -e \"${base}^{commit}\" 2>/dev/null || exit 1; changed=$(git diff --name-only --no-renames \"$base\" \"$head\") || exit 1; [ -z \"$changed\" ] && exit 0; printf \"%s\\n\" \"$changed\" | grep -Ev \"(^|/)(docs|tests|__tests__|coverage|reports|artifacts)/|(^|/)README[^/]*$|\\.(md|mdx)$|\\.(test|spec)\\.(js|jsx|ts|tsx)$|^\\.github/\" >/dev/null && exit 1 || exit 0'"
+  "ignoreCommand": "bash scripts/vercel-ignore-build.sh"
 }
