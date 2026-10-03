@@ -1,26 +1,52 @@
 name: CI
+
 on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'screenshots/**'
+      - '.github/ISSUE_TEMPLATE/**'
   push:
     branches: [main]
-  pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'screenshots/**'
+      - '.github/ISSUE_TEMPLATE/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm install --no-audit --no-fund
       - run: npm run build
+
   e2e:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    needs: validate
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm install --no-audit --no-fund
       - run: npx playwright install --with-deps chromium
       - name: Desktop Chromium release flow
         run: npm run test:e2e -- e2e/editor.spec.ts --project=chromium
@@ -35,4 +61,4 @@ jobs:
             playwright-report
             test-results
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 1
