@@ -11,17 +11,13 @@ on:
       - "tests/cloud-sync.test.ts"
       - "e2e/cloud.spec.ts"
       - ".github/workflows/cloud-ci.yml"
-  push:
-    branches: [main]
-    paths:
-      - "src/lib/cloud/**"
-      - "src/components/cloud/**"
-      - "src/app/cloud/**"
-      - "src/app/cloud-workspace.css"
-      - "supabase/migrations/**"
-      - "tests/cloud-sync.test.ts"
-      - "e2e/cloud.spec.ts"
-      - ".github/workflows/cloud-ci.yml"
+
+concurrency:
+  group: lean-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   cloud-fallback-e2e:
@@ -46,4 +42,4 @@ jobs:
             playwright-report
             test-results
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 1
