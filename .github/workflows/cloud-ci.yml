@@ -11,21 +11,16 @@ on:
       - "tests/cloud-sync.test.ts"
       - "e2e/cloud.spec.ts"
       - ".github/workflows/cloud-ci.yml"
-  push:
-    branches: [main]
-    paths:
-      - "src/lib/cloud/**"
-      - "src/components/cloud/**"
-      - "src/app/cloud/**"
-      - "src/app/cloud-workspace.css"
-      - "supabase/migrations/**"
-      - "tests/cloud-sync.test.ts"
-      - "e2e/cloud.spec.ts"
-      - ".github/workflows/cloud-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: photo-cloud-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   cloud-fallback-e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     env:
       NEXT_PUBLIC_SUPABASE_URL: ""
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ""
